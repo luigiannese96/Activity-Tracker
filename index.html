@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Tracker</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #151823;
+    --panel2: #1c2030;
+    --border: #2a2f42;
+    --text: #e8eaf0;
+    --muted: #8b90a3;
+    --accent: #5ec8ff;
+    --accent2: #7af0c2;
+    --warn: #ffcf5e;
+    --done: #58d38a;
+    --pending: #ff8a8a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Segoe UI, Roboto, sans-serif;
+    padding: 12px;
+    padding-bottom: 60px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 4px 0 14px;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+  h2.section-title {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 22px 4px 10px;
+  }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-card.wide { grid-column: 1 / -1; }
+  .stat-num {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  svg.ring { width: 86px; height: 86px; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 10; }
+  .ring-fg { fill: none; stroke: var(--accent2); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .ring-pct { font-size: 1.5rem; font-weight: 700; }
+
+  .cat-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .cat-bar-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+    color: var(--muted);
+  }
+  .cat-bar-head b { color: var(--text); }
+  .cat-bar-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .cat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    transition: width 0.5s ease;
+  }
+
+  .suggest-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .suggest-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+  }
+  .suggest-icon { font-size: 1.4rem; line-height: 1; }
+  .suggest-name { font-size: 0.92rem; font-weight: 600; margin-top: 4px; }
+  .suggest-cat { font-size: 0.72rem; color: var(--accent); margin-top: 2px; }
+
+  .random-pick {
+    background: linear-gradient(135deg, #2a1f3d, #1a2740);
+    border: 1px solid #3c3560;
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .random-pick-left { display: flex; flex-direction: column; gap: 2px; }
+  .random-pick-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--warn);
+  }
+  .random-pick-name { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .random-pick-icon { font-size: 1.3rem; }
+  .random-pick-cat { font-size: 0.78rem; color: var(--muted); }
+  .shuffle-btn {
+    background: var(--accent);
+    color: #0b0d12;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .shuffle-btn:active { transform: scale(0.96); }
+
+  .filter-block { margin-top: 18px; }
+  .filter-group-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 10px 4px 6px;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .chip.active {
+    background: var(--accent);
+    color: #0b0d12;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .bento-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 74px;
+    position: relative;
+  }
+  .bento-card.done {
+    border-color: rgba(88, 211, 138, 0.4);
+    background: linear-gradient(145deg, rgba(88,211,138,0.08), var(--panel));
+  }
+  .bento-icon { font-size: 1.6rem; line-height: 1; }
+  .bento-status-dot {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--pending);
+  }
+  .bento-card.done .bento-status-dot { background: var(--done); }
+  .bento-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding-right: 14px;
+  }
+  .bento-cat { display: none; }
+  .bento-planned-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--warn);
+    background: rgba(255, 207, 94, 0.12);
+    border: 1px solid rgba(255, 207, 94, 0.35);
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-top: auto;
+    align-self: flex-start;
+  }
+
+  .category-section {
+    grid-column: 1 / -1;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+  .category-section:first-child { margin-top: 4px; }
+  .category-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .category-section-count { font-size: 0.7rem; color: var(--muted); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 30px 10px;
+    font-size: 0.85rem;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.68rem;
+    margin-top: 30px;
+    opacity: 0.6;
+  }
+
+  @media (min-width: 480px) {
+    .bento-grid { grid-template-columns: repeat(3, 1fr); }
+    .suggest-row { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* ---------- Tabs ---------- */
+  .tab-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 9px 8px;
+    border-radius: 9px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #0b0d12;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---------- Scheduling ---------- */
+  .sched-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+  .sched-date-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .sched-date-input {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+  }
+  .sched-date-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .sched-grid-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .sched-weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(104px, 1fr));
+    gap: 6px;
+    margin-bottom: 6px;
+    min-width: 770px;
+  }
+  .sched-weekday-head {
+    text-align: center;
+    font-size: 0.64rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 700;
+    padding: 2px 0;
+  }
+  .sched-week-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(104px, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+    min-width: 770px;
+  }
+  .sched-day {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px;
+  }
+  .sched-day.outside {
+    opacity: 0.35;
+  }
+  .sched-day-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 6px;
+  }
+  .sched-day-name {
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+  .sched-day-date {
+    font-size: 0.6rem;
+    color: var(--muted);
+  }
+  .sched-counter {
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent2);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 14px;
+  }
+  .sched-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+  }
+  .sched-entry-icon { font-size: 1rem; }
+  .sched-entry-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sched-entry-tag {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: rgba(94, 200, 255, 0.12);
+    border: 1px solid rgba(94, 200, 255, 0.3);
+    border-radius: 6px;
+    padding: 2px 5px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sched-entry-tag.untagged {
+    color: var(--muted);
+    background: transparent;
+    border-style: dashed;
+  }
+  .sched-entry-remove {
+    color: var(--pending);
+    cursor: pointer;
+    font-weight: 700;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+  .sched-empty-slot {
+    font-size: 0.74rem;
+    color: var(--muted);
+    opacity: 0.6;
+    padding: 2px 0;
+  }
+  .sched-add-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .sched-select {
+    flex: 1;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+  }
+  .sched-add-btn {
+    background: var(--accent2);
+    color: #0b0d12;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sched-tag-menu {
+    position: absolute;
+    z-index: 20;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+  .sched-tag-menu-opt {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .sched-tag-menu-opt:hover { background: var(--accent); color: #0b0d12; }
+</style>
+</head>
+<body>
+
+<h1>🎯 Activity Tracker</h1>
+
+<div class="tab-row">
+  <div class="tab-btn active" data-tab="dashboard">Dashboard</div>
+  <div class="tab-btn" data-tab="scheduling">Schedule</div>
+</div>
+
+<div id="tab-dashboard" class="tab-panel active">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="dash-grid">
+  <div class="stat-card wide ring-wrap">
+    <svg class="ring" viewBox="0 0 100 100">
+      <circle class="ring-bg" cx="50" cy="50" r="40"></circle>
+      <circle class="ring-fg" id="ringFg" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+    </svg>
+    <div>
+      <div class="ring-pct" id="overallPct">0%</div>
+      <div class="stat-label" id="overallCount">0 / 201 complete</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="doneCount">0</div>
+    <div class="stat-label">Completed</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="pendingCount">201</div>
+    <div class="stat-label">Pending</div>
+  </div>
+</div>
+
+<h2 class="section-title">By Category</h2>
+<div class="stat-card wide">
+  <div class="cat-bars" id="catBars">
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Everyday Cardio</span><b>0/17 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Home Gym</span><b>0/10 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Group Fitness</span><b>0/13 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Wheels</span><b>0/7 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Combat Sports</span><b>0/11 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Racquet Sports</span><b>0/8 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Casual Games</span><b>0/10 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Ball Sports</span><b>0/13 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Niche Sports</span><b>0/9 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Water Sports</span><b>0/14 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Snow Sports</span><b>0/8 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Extreme Adventure</span><b>0/12 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Performance</span><b>0/7 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Side Gigs</span><b>0/7 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Quick Recovery</span><b>0/13 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Spa Recovery</span><b>0/14 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Life</span><b>0/13 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Family</span><b>0/9 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>Other</span><b>0/6 · 0%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:0%"></div></div>
+      </div></div>
+</div>
+
+<!-- ===== SUGGESTED NEXT ===== -->
+<h2 class="section-title">Suggested Next</h2>
+<div class="suggest-row" id="suggestRow">
+      <div class="suggest-card">
+        <div class="suggest-icon">🏃</div>
+        <div class="suggest-name">Running</div>
+        <div class="suggest-cat">Everyday Cardio</div>
+      </div>
+      <div class="suggest-card">
+        <div class="suggest-icon">🏋️</div>
+        <div class="suggest-name">Strength Trainer</div>
+        <div class="suggest-cat">Home Gym</div>
+      </div>
+      <div class="suggest-card">
+        <div class="suggest-icon">🚣</div>
+        <div class="suggest-name">Rowing</div>
+        <div class="suggest-cat">Water Sports</div>
+      </div></div>
+
+<div class="random-pick">
+  <div class="random-pick-left">
+    <div class="random-pick-label">🎲 Random Pick</div>
+    <div class="random-pick-name" id="randomName"><span class="random-pick-icon">🏃</span>Running</div>
+    <div class="random-pick-cat" id="randomCat">Everyday Cardio</div>
+  </div>
+  <button class="shuffle-btn" id="shuffleBtn">Shuffle 🔀</button>
+</div>
+
+<!-- ===== FILTERS ===== -->
+<div class="filter-block">
+  <h2 class="section-title" style="margin-top:0;">All Activities</h2>
+
+  <div class="filter-group-label">Category</div>
+  <div class="chip-row" id="categoryChips"><div class="chip active" data-cat="all">All</div><div class="chip" data-cat="Everyday Cardio">Everyday Cardio</div><div class="chip" data-cat="Home Gym">Home Gym</div><div class="chip" data-cat="Group Fitness">Group Fitness</div><div class="chip" data-cat="Wheels">Wheels</div><div class="chip" data-cat="Combat Sports">Combat Sports</div><div class="chip" data-cat="Racquet Sports">Racquet Sports</div><div class="chip" data-cat="Casual Games">Casual Games</div><div class="chip" data-cat="Ball Sports">Ball Sports</div><div class="chip" data-cat="Niche Sports">Niche Sports</div><div class="chip" data-cat="Water Sports">Water Sports</div><div class="chip" data-cat="Snow Sports">Snow Sports</div><div class="chip" data-cat="Extreme Adventure">Extreme Adventure</div><div class="chip" data-cat="Performance">Performance</div><div class="chip" data-cat="Side Gigs">Side Gigs</div><div class="chip" data-cat="Quick Recovery">Quick Recovery</div><div class="chip" data-cat="Spa Recovery">Spa Recovery</div><div class="chip" data-cat="Life">Life</div><div class="chip" data-cat="Family">Family</div><div class="chip" data-cat="Other">Other</div></div>
+
+  <div class="filter-group-label">Status</div>
+  <div class="chip-row" id="statusChips">
+    <div class="chip active" data-status="all">All</div>
+    <div class="chip" data-status="done">Completed</div>
+    <div class="chip" data-status="pending">Pending</div>
+  </div>
+
+  <div class="filter-group-label">Sort</div>
+  <div class="chip-row" id="sortChips">
+    <div class="chip active" data-sort="category">By Category</div>
+    <div class="chip" data-sort="alpha">Alphabetical</div>
+  </div>
+</div>
+
+<!-- ===== BENTO LIST ===== -->
+<div class="bento-grid" id="bentoGrid">
+    <div class="category-section">
+      <div class="category-section-title">Everyday Cardio</div>
+      <div class="category-section-count">0/17</div>
+    </div>
+    <div class="bento-card" data-id="1">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚴</div>
+      <div class="bento-name">Cycling</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="92">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏁</div>
+      <div class="bento-name">Duathlon</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="8">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💪</div>
+      <div class="bento-name">Functional Fitness</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="9">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🔥</div>
+      <div class="bento-name">HIIT</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="4">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥾</div>
+      <div class="bento-name">Hiking/Rucking</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="16">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🪢</div>
+      <div class="bento-name">Jumping Rope</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="60">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚶</div>
+      <div class="bento-name">Nordic Walking</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="20">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚶‍♂️</div>
+      <div class="bento-name">Race Walking</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="21">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎒</div>
+      <div class="bento-name">Rucking</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="0">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏃</div>
+      <div class="bento-name">Running</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="23">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏃‍♀️</div>
+      <div class="bento-name">Sprint Training</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="12">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏟️</div>
+      <div class="bento-name">Stadium Steps</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="2">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏊</div>
+      <div class="bento-name">Swimming</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="51">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏃</div>
+      <div class="bento-name">Track &amp; Field</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="24">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏞️</div>
+      <div class="bento-name">Trail Running</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="91">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏁</div>
+      <div class="bento-name">Triathlon</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="bento-card" data-id="3">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚶</div>
+      <div class="bento-name">Walking</div>
+      <div class="bento-cat">Everyday Cardio</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Home Gym</div>
+      <div class="category-section-count">0/10</div>
+    </div>
+    <div class="bento-card" data-id="13">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚲</div>
+      <div class="bento-name">Assault Bike</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="19">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💪</div>
+      <div class="bento-name">Bodybuilding</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="10">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌀</div>
+      <div class="bento-name">Elliptical</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="7">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏋️‍♀️</div>
+      <div class="bento-name">Powerlifting</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="22">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⛷️</div>
+      <div class="bento-name">Ski Erg</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="11">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🪜</div>
+      <div class="bento-name">Stairmaster</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="5">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏋️</div>
+      <div class="bento-name">Strength Trainer</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="70">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤸‍♂️</div>
+      <div class="bento-name">Trampoline</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="25">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧗</div>
+      <div class="bento-name">Vertical Climber</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="bento-card" data-id="6">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏋️‍♂️</div>
+      <div class="bento-name">Weightlifting</div>
+      <div class="bento-cat">Home Gym</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Group Fitness</div>
+      <div class="category-section-count">0/13</div>
+    </div>
+    <div class="bento-card" data-id="182">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🩰</div>
+      <div class="bento-name">Barre</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="183">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🩰</div>
+      <div class="bento-name">Barre3</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="26">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🔥</div>
+      <div class="bento-name">Barry’s</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="27">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏋️</div>
+      <div class="bento-name">F45</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="187">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥵</div>
+      <div class="bento-name">Hot Yoga</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="18">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤸</div>
+      <div class="bento-name">Pilates</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="61">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧘</div>
+      <div class="bento-name">Qigong</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="63">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤸</div>
+      <div class="bento-name">Reformer Pilates</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="66">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧘‍♀️</div>
+      <div class="bento-name">Sculpt Yoga</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="67">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏋️‍♀️</div>
+      <div class="bento-name">Solidcore</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="15">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚴‍♀️</div>
+      <div class="bento-name">Spin</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="72">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌊</div>
+      <div class="bento-name">Water Aerobics</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="bento-card" data-id="17">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧘</div>
+      <div class="bento-name">Yoga</div>
+      <div class="bento-cat">Group Fitness</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Wheels</div>
+      <div class="category-section-count">0/7</div>
+    </div>
+    <div class="bento-card" data-id="97">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚴</div>
+      <div class="bento-name">Hand Cycling</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="bento-card" data-id="33">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛼</div>
+      <div class="bento-name">Inline Skating</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="bento-card" data-id="83">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚵</div>
+      <div class="bento-name">Mountain Biking</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="bento-card" data-id="65">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛴</div>
+      <div class="bento-name">Scootering</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="bento-card" data-id="34">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛹</div>
+      <div class="bento-name">Skateboarding</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="bento-card" data-id="104">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤹</div>
+      <div class="bento-name">Unicycling</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="bento-card" data-id="90">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">♿</div>
+      <div class="bento-name">Wheelchair Pushing</div>
+      <div class="bento-cat">Wheels</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Combat Sports</div>
+      <div class="category-section-count">0/11</div>
+    </div>
+    <div class="bento-card" data-id="28">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥊</div>
+      <div class="bento-name">Box Fitness</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="29">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥊</div>
+      <div class="bento-name">Boxing</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="86">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤺</div>
+      <div class="bento-name">Fencing</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="188">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥋</div>
+      <div class="bento-name">Jiu Jitsu</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="199">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥋</div>
+      <div class="bento-name">Judo</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="30">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥋</div>
+      <div class="bento-name">Kickboxing</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="31">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥋</div>
+      <div class="bento-name">Martial Arts</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="59">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥋</div>
+      <div class="bento-name">Muay Thai</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="68">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥋</div>
+      <div class="bento-name">Taekwondo</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="69">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧘‍♂️</div>
+      <div class="bento-name">Tai Chi</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="bento-card" data-id="189">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤼</div>
+      <div class="bento-name">Wrestling</div>
+      <div class="bento-cat">Combat Sports</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Racquet Sports</div>
+      <div class="category-section-count">0/8</div>
+    </div>
+    <div class="bento-card" data-id="37">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏸</div>
+      <div class="bento-name">Badminton</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="42">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏓</div>
+      <div class="bento-name">Paddle Tennis</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="41">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎾</div>
+      <div class="bento-name">Padel</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="36">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏓</div>
+      <div class="bento-name">Pickleball</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="62">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎾</div>
+      <div class="bento-name">Racquetball</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="40">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎾</div>
+      <div class="bento-name">Squash</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="38">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏓</div>
+      <div class="bento-name">Table Tennis</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="bento-card" data-id="39">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎾</div>
+      <div class="bento-name">Tennis</div>
+      <div class="bento-cat">Racquet Sports</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Casual Games</div>
+      <div class="category-section-count">0/10</div>
+    </div>
+    <div class="bento-card" data-id="45">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏹</div>
+      <div class="bento-name">Archery</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="52">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎱</div>
+      <div class="bento-name">Billiards</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="54">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎳</div>
+      <div class="bento-name">Bowling</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="171">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">♟️</div>
+      <div class="bento-name">Chess</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="55">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎯</div>
+      <div class="bento-name">Darts</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="44">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥏</div>
+      <div class="bento-name">Disc Golf</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="154">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎮</div>
+      <div class="bento-name">Gaming</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="84">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⛳</div>
+      <div class="bento-name">Golf</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="57">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧦</div>
+      <div class="bento-name">Hacky Sack</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="bento-card" data-id="178">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🃏</div>
+      <div class="bento-name">Poker</div>
+      <div class="bento-cat">Casual Games</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Ball Sports</div>
+      <div class="category-section-count">0/13</div>
+    </div>
+    <div class="bento-card" data-id="107">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏈</div>
+      <div class="bento-name">American Football</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="105">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⚾</div>
+      <div class="bento-name">Baseball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="47">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏀</div>
+      <div class="bento-name">Basketball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="49">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤾</div>
+      <div class="bento-name">Handball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="58">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⚽</div>
+      <div class="bento-name">Kickball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="50">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏐</div>
+      <div class="bento-name">Netball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="112">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏉</div>
+      <div class="bento-name">Rugby</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="48">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⚽</div>
+      <div class="bento-name">Soccer</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="106">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥎</div>
+      <div class="bento-name">Softball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="43">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏐</div>
+      <div class="bento-name">Spikeball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="71">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥏</div>
+      <div class="bento-name">Ultimate Frisbee</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="46">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏐</div>
+      <div class="bento-name">Volleyball</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="bento-card" data-id="117">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤽</div>
+      <div class="bento-name">Water Polo</div>
+      <div class="bento-cat">Ball Sports</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Niche Sports</div>
+      <div class="category-section-count">0/9</div>
+    </div>
+    <div class="bento-card" data-id="108">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏉</div>
+      <div class="bento-name">Australian Football</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="113">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏏</div>
+      <div class="bento-name">Cricket</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="110">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏑</div>
+      <div class="bento-name">Field Hockey</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="114">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🍀</div>
+      <div class="bento-name">Gaelic Football</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="115">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏑</div>
+      <div class="bento-name">Hurling/Camogie</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="109">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏒</div>
+      <div class="bento-name">Ice Hockey</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="111">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥍</div>
+      <div class="bento-name">Lacrosse</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="116">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🐎</div>
+      <div class="bento-name">Polo</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="bento-card" data-id="64">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏒</div>
+      <div class="bento-name">Roller Hockey</div>
+      <div class="bento-cat">Niche Sports</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Water Sports</div>
+      <div class="category-section-count">0/14</div>
+    </div>
+    <div class="bento-card" data-id="94">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛶</div>
+      <div class="bento-name">Canoeing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="118">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤿</div>
+      <div class="bento-name">Diving</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="56">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎣</div>
+      <div class="bento-name">Fishing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="96">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤿</div>
+      <div class="bento-name">Freediving</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="98">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚤</div>
+      <div class="bento-name">Jet Skiing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="73">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛶</div>
+      <div class="bento-name">Kayaking</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="77">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🪁</div>
+      <div class="bento-name">Kite Boarding</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="74">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏄</div>
+      <div class="bento-name">Paddleboarding</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="14">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚣</div>
+      <div class="bento-name">Rowing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="75">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⛵</div>
+      <div class="bento-name">Sailing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="102">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎣</div>
+      <div class="bento-name">Sport Fishing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="76">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏄</div>
+      <div class="bento-name">Surfing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="78">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏄‍♀️</div>
+      <div class="bento-name">Wakeboarding</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="bento-card" data-id="79">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚤</div>
+      <div class="bento-name">Water Skiing</div>
+      <div class="bento-cat">Water Sports</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Snow Sports</div>
+      <div class="category-section-count">0/8</div>
+    </div>
+    <div class="bento-card" data-id="82">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎿</div>
+      <div class="bento-name">Cross Country Skiing</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="95">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🥌</div>
+      <div class="bento-name">Curling</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="32">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⛸️</div>
+      <div class="bento-name">Ice Skating</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="100">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎿</div>
+      <div class="bento-name">Ski Touring</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="80">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">⛷️</div>
+      <div class="bento-name">Skiing</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="81">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏂</div>
+      <div class="bento-name">Snowboarding</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="101">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">❄️</div>
+      <div class="bento-name">Snowshoeing</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="bento-card" data-id="120">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🔫</div>
+      <div class="bento-name">Winter Biathlon</div>
+      <div class="bento-cat">Snow Sports</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Extreme Adventure</div>
+      <div class="category-section-count">0/12</div>
+    </div>
+    <div class="bento-card" data-id="53">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧗</div>
+      <div class="bento-name">Bouldering</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="185">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎪</div>
+      <div class="bento-name">Circus Arts</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="85">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🐎</div>
+      <div class="bento-name">Horseback Riding</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="89">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏍️</div>
+      <div class="bento-name">Motocross</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="88">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏎️</div>
+      <div class="bento-name">Motor Racing</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="99">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏔️</div>
+      <div class="bento-name">Mountaineering</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="93">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧗‍♂️</div>
+      <div class="bento-name">Obstacle Course Racing</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="87">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎯</div>
+      <div class="bento-name">Paintball</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="190">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏃‍♂️</div>
+      <div class="bento-name">Parkour</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="35">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧗</div>
+      <div class="bento-name">Rock Climbing</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="200">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🪂</div>
+      <div class="bento-name">Skydiving</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="bento-card" data-id="103">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎢</div>
+      <div class="bento-name">Thrill Ride</div>
+      <div class="bento-cat">Extreme Adventure</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Performance</div>
+      <div class="category-section-count">0/7</div>
+    </div>
+    <div class="bento-card" data-id="194">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🩰</div>
+      <div class="bento-name">Ballet</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="bento-card" data-id="195">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🕺</div>
+      <div class="bento-name">Breakdancing</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="bento-card" data-id="197">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎧</div>
+      <div class="bento-name">DJ</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="bento-card" data-id="184">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💃</div>
+      <div class="bento-name">Dance</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="bento-card" data-id="192">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎵</div>
+      <div class="bento-name">Musical Performance</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="bento-card" data-id="191">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎤</div>
+      <div class="bento-name">Public Speaking</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="bento-card" data-id="193">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎭</div>
+      <div class="bento-name">Stage Performance</div>
+      <div class="bento-cat">Performance</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Side Gigs</div>
+      <div class="category-section-count">0/7</div>
+    </div>
+    <div class="bento-card" data-id="170">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🍸</div>
+      <div class="bento-name">Bartending</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="bento-card" data-id="159">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏌️</div>
+      <div class="bento-name">Caddying</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="bento-card" data-id="196">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">📣</div>
+      <div class="bento-name">Cheerleading</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="bento-card" data-id="156">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">📋</div>
+      <div class="bento-name">Coaching</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="bento-card" data-id="186">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤸‍♀️</div>
+      <div class="bento-name">Gymnastics</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="bento-card" data-id="198">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌭</div>
+      <div class="bento-name">Hot Dog Challenge</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="bento-card" data-id="119">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🟨</div>
+      <div class="bento-name">Refereeing</div>
+      <div class="bento-cat">Side Gigs</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Quick Recovery</div>
+      <div class="category-section-count">0/13</div>
+    </div>
+    <div class="bento-card" data-id="128">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌬️</div>
+      <div class="bento-name">Breathwork</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="131">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚿</div>
+      <div class="bento-name">Cold Shower</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="134">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧻</div>
+      <div class="bento-name">Foam Rolling</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="135">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">♨️</div>
+      <div class="bento-name">Hot Tub</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="122">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧘</div>
+      <div class="bento-name">Meditation</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="137">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">😴</div>
+      <div class="bento-name">Nap</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="138">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💤</div>
+      <div class="bento-name">Non-Sleep Deep Rest</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="139">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">➕</div>
+      <div class="bento-name">Other - Recovery</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="142">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧘‍♀️</div>
+      <div class="bento-name">Restorative Yoga</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="143">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌙</div>
+      <div class="bento-name">Sleep</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="121">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤸</div>
+      <div class="bento-name">Stretching</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="146">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧠</div>
+      <div class="bento-name">Vagus Nerve Stimulation</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="bento-card" data-id="147">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛁</div>
+      <div class="bento-name">Warm Bath</div>
+      <div class="bento-cat">Quick Recovery</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Spa Recovery</div>
+      <div class="category-section-count">0/14</div>
+    </div>
+    <div class="bento-card" data-id="127">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💉</div>
+      <div class="bento-name">Acupuncture</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="126">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🦵</div>
+      <div class="bento-name">Air Compression</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="129">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💡</div>
+      <div class="bento-name">Bright Light Therapy</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="130">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🦴</div>
+      <div class="bento-name">Chiropractor</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="132">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌡️</div>
+      <div class="bento-name">Contrast Therapy</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="133">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧖</div>
+      <div class="bento-name">Dry Sauna</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="123">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧊</div>
+      <div class="bento-name">Ice Bath</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="136">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🔥</div>
+      <div class="bento-name">Infrared Sauna</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="124">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💆</div>
+      <div class="bento-name">Massage Therapy</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="125">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">💆‍♂️</div>
+      <div class="bento-name">Percussive Massage</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="140">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🩹</div>
+      <div class="bento-name">Physical Therapy</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="141">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🔴</div>
+      <div class="bento-name">Red Light Therapy</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="144">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎶</div>
+      <div class="bento-name">Sound Healing</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="bento-card" data-id="145">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌫️</div>
+      <div class="bento-name">Steam Room</div>
+      <div class="bento-cat">Spa Recovery</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Life</div>
+      <div class="category-section-count">0/13</div>
+    </div>
+    <div class="bento-card" data-id="153">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">✈️</div>
+      <div class="bento-name">Air Travel</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="149">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧹</div>
+      <div class="bento-name">Cleaning</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="152">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚗</div>
+      <div class="bento-name">Commuting</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="148">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🍳</div>
+      <div class="bento-name">Cooking</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="160">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🐕</div>
+      <div class="bento-name">Dog Walking</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="173">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚗</div>
+      <div class="bento-name">Driving</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="157">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">😤</div>
+      <div class="bento-name">High Stress Work</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="175">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧶</div>
+      <div class="bento-name">Knitting</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="151">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛠️</div>
+      <div class="bento-name">Manual Labor</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="180">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌨️</div>
+      <div class="bento-name">Snow Shoveling</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="155">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">📺</div>
+      <div class="bento-name">Watching Sports</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="181">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🪓</div>
+      <div class="bento-name">Woodchopping</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="bento-card" data-id="150">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🌱</div>
+      <div class="bento-name">Yard Work/Gardening</div>
+      <div class="bento-cat">Life</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Family</div>
+      <div class="category-section-count">0/9</div>
+    </div>
+    <div class="bento-card" data-id="163">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤱</div>
+      <div class="bento-name">Babywearing</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="172">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🤗</div>
+      <div class="bento-name">Cuddling With Child</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="165">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">👨‍👩‍👧</div>
+      <div class="bento-name">Dedicated Parenting</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="176">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🍼</div>
+      <div class="bento-name">Nursing A Baby</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="177">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧸</div>
+      <div class="bento-name">Playing With Child</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="179">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🍼</div>
+      <div class="bento-name">Pumping</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="162">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🏃‍♀️</div>
+      <div class="bento-name">Stroller Jogging</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="161">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚶‍♀️</div>
+      <div class="bento-name">Stroller Walking</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="bento-card" data-id="164">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🧒</div>
+      <div class="bento-name">Toddlerwearing</div>
+      <div class="bento-cat">Family</div>
+    </div>
+    <div class="category-section">
+      <div class="category-section-title">Other</div>
+      <div class="category-section-count">0/6</div>
+    </div>
+    <div class="bento-card" data-id="174">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚒</div>
+      <div class="bento-name">Firefighting</div>
+      <div class="bento-cat">Other</div>
+    </div>
+    <div class="bento-card" data-id="168">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🛩️</div>
+      <div class="bento-name">Operations - Flying</div>
+      <div class="bento-cat">Other</div>
+    </div>
+    <div class="bento-card" data-id="167">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚑</div>
+      <div class="bento-name">Operations - Medical</div>
+      <div class="bento-cat">Other</div>
+    </div>
+    <div class="bento-card" data-id="166">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🎖️</div>
+      <div class="bento-name">Operations - Tactical</div>
+      <div class="bento-cat">Other</div>
+    </div>
+    <div class="bento-card" data-id="169">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🚤</div>
+      <div class="bento-name">Operations - Water</div>
+      <div class="bento-cat">Other</div>
+    </div>
+    <div class="bento-card" data-id="158">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">🔘</div>
+      <div class="bento-name">Other</div>
+      <div class="bento-cat">Other</div>
+    </div></div>
+<div class="empty-state" id="emptyState" style="display:none;">No activities match these filters.</div>
+
+</div>
+
+<!-- ===== SCHEDULE TAB ===== -->
+<div id="tab-scheduling" class="tab-panel">
+  <div class="sched-toolbar">
+    <div class="sched-date-label">Schedule starts</div>
+    <div class="sched-date-value" id="schedStartDateDisplay">—</div>
+  </div>
+  <div class="sched-counter" id="schedCounter">0 activities planned</div>
+  <div class="sched-grid-scroll"><div id="schedWeeks"></div></div>
+</div>
+
+<footer>Read-only progress report · data updated manually from source</footer>
+
+<script>
+const ACTIVITIES = [{"id": 0, "activity": "Running", "category": "Everyday Cardio", "icon": "🏃", "done": false}, {"id": 1, "activity": "Cycling", "category": "Everyday Cardio", "icon": "🚴", "done": false}, {"id": 2, "activity": "Swimming", "category": "Everyday Cardio", "icon": "🏊", "done": false}, {"id": 3, "activity": "Walking", "category": "Everyday Cardio", "icon": "🚶", "done": false}, {"id": 4, "activity": "Hiking/Rucking", "category": "Everyday Cardio", "icon": "🥾", "done": false}, {"id": 5, "activity": "Strength Trainer", "category": "Home Gym", "icon": "🏋️", "done": false}, {"id": 6, "activity": "Weightlifting", "category": "Home Gym", "icon": "🏋️‍♂️", "done": false}, {"id": 7, "activity": "Powerlifting", "category": "Home Gym", "icon": "🏋️‍♀️", "done": false}, {"id": 8, "activity": "Functional Fitness", "category": "Everyday Cardio", "icon": "💪", "done": false}, {"id": 9, "activity": "HIIT", "category": "Everyday Cardio", "icon": "🔥", "done": false}, {"id": 10, "activity": "Elliptical", "category": "Home Gym", "icon": "🌀", "done": false}, {"id": 11, "activity": "Stairmaster", "category": "Home Gym", "icon": "🪜", "done": false}, {"id": 12, "activity": "Stadium Steps", "category": "Everyday Cardio", "icon": "🏟️", "done": false}, {"id": 13, "activity": "Assault Bike", "category": "Home Gym", "icon": "🚲", "done": false}, {"id": 14, "activity": "Rowing", "category": "Water Sports", "icon": "🚣", "done": false}, {"id": 15, "activity": "Spin", "category": "Group Fitness", "icon": "🚴‍♀️", "done": false}, {"id": 16, "activity": "Jumping Rope", "category": "Everyday Cardio", "icon": "🪢", "done": false}, {"id": 17, "activity": "Yoga", "category": "Group Fitness", "icon": "🧘", "done": false}, {"id": 18, "activity": "Pilates", "category": "Group Fitness", "icon": "🤸", "done": false}, {"id": 19, "activity": "Bodybuilding", "category": "Home Gym", "icon": "💪", "done": false}, {"id": 20, "activity": "Race Walking", "category": "Everyday Cardio", "icon": "🚶‍♂️", "done": false}, {"id": 21, "activity": "Rucking", "category": "Everyday Cardio", "icon": "🎒", "done": false}, {"id": 22, "activity": "Ski Erg", "category": "Home Gym", "icon": "⛷️", "done": false}, {"id": 23, "activity": "Sprint Training", "category": "Everyday Cardio", "icon": "🏃‍♀️", "done": false}, {"id": 24, "activity": "Trail Running", "category": "Everyday Cardio", "icon": "🏞️", "done": false}, {"id": 25, "activity": "Vertical Climber", "category": "Home Gym", "icon": "🧗", "done": false}, {"id": 26, "activity": "Barry’s", "category": "Group Fitness", "icon": "🔥", "done": false}, {"id": 27, "activity": "F45", "category": "Group Fitness", "icon": "🏋️", "done": false}, {"id": 28, "activity": "Box Fitness", "category": "Combat Sports", "icon": "🥊", "done": false}, {"id": 29, "activity": "Boxing", "category": "Combat Sports", "icon": "🥊", "done": false}, {"id": 30, "activity": "Kickboxing", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 31, "activity": "Martial Arts", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 32, "activity": "Ice Skating", "category": "Snow Sports", "icon": "⛸️", "done": false}, {"id": 33, "activity": "Inline Skating", "category": "Wheels", "icon": "🛼", "done": false}, {"id": 34, "activity": "Skateboarding", "category": "Wheels", "icon": "🛹", "done": false}, {"id": 35, "activity": "Rock Climbing", "category": "Extreme Adventure", "icon": "🧗", "done": false}, {"id": 36, "activity": "Pickleball", "category": "Racquet Sports", "icon": "🏓", "done": false}, {"id": 37, "activity": "Badminton", "category": "Racquet Sports", "icon": "🏸", "done": false}, {"id": 38, "activity": "Table Tennis", "category": "Racquet Sports", "icon": "🏓", "done": false}, {"id": 39, "activity": "Tennis", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 40, "activity": "Squash", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 41, "activity": "Padel", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 42, "activity": "Paddle Tennis", "category": "Racquet Sports", "icon": "🏓", "done": false}, {"id": 43, "activity": "Spikeball", "category": "Ball Sports", "icon": "🏐", "done": false}, {"id": 44, "activity": "Disc Golf", "category": "Casual Games", "icon": "🥏", "done": false}, {"id": 45, "activity": "Archery", "category": "Casual Games", "icon": "🏹", "done": false}, {"id": 46, "activity": "Volleyball", "category": "Ball Sports", "icon": "🏐", "done": false}, {"id": 47, "activity": "Basketball", "category": "Ball Sports", "icon": "🏀", "done": false}, {"id": 48, "activity": "Soccer", "category": "Ball Sports", "icon": "⚽", "done": false}, {"id": 49, "activity": "Handball", "category": "Ball Sports", "icon": "🤾", "done": false}, {"id": 50, "activity": "Netball", "category": "Ball Sports", "icon": "🏐", "done": false}, {"id": 51, "activity": "Track & Field", "category": "Everyday Cardio", "icon": "🏃", "done": false}, {"id": 52, "activity": "Billiards", "category": "Casual Games", "icon": "🎱", "done": false}, {"id": 53, "activity": "Bouldering", "category": "Extreme Adventure", "icon": "🧗", "done": false}, {"id": 54, "activity": "Bowling", "category": "Casual Games", "icon": "🎳", "done": false}, {"id": 55, "activity": "Darts", "category": "Casual Games", "icon": "🎯", "done": false}, {"id": 56, "activity": "Fishing", "category": "Water Sports", "icon": "🎣", "done": false}, {"id": 57, "activity": "Hacky Sack", "category": "Casual Games", "icon": "🧦", "done": false}, {"id": 58, "activity": "Kickball", "category": "Ball Sports", "icon": "⚽", "done": false}, {"id": 59, "activity": "Muay Thai", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 60, "activity": "Nordic Walking", "category": "Everyday Cardio", "icon": "🚶", "done": false}, {"id": 61, "activity": "Qigong", "category": "Group Fitness", "icon": "🧘", "done": false}, {"id": 62, "activity": "Racquetball", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 63, "activity": "Reformer Pilates", "category": "Group Fitness", "icon": "🤸", "done": false}, {"id": 64, "activity": "Roller Hockey", "category": "Niche Sports", "icon": "🏒", "done": false}, {"id": 65, "activity": "Scootering", "category": "Wheels", "icon": "🛴", "done": false}, {"id": 66, "activity": "Sculpt Yoga", "category": "Group Fitness", "icon": "🧘‍♀️", "done": false}, {"id": 67, "activity": "Solidcore", "category": "Group Fitness", "icon": "🏋️‍♀️", "done": false}, {"id": 68, "activity": "Taekwondo", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 69, "activity": "Tai Chi", "category": "Combat Sports", "icon": "🧘‍♂️", "done": false}, {"id": 70, "activity": "Trampoline", "category": "Home Gym", "icon": "🤸‍♂️", "done": false}, {"id": 71, "activity": "Ultimate Frisbee", "category": "Ball Sports", "icon": "🥏", "done": false}, {"id": 72, "activity": "Water Aerobics", "category": "Group Fitness", "icon": "🌊", "done": false}, {"id": 73, "activity": "Kayaking", "category": "Water Sports", "icon": "🛶", "done": false}, {"id": 74, "activity": "Paddleboarding", "category": "Water Sports", "icon": "🏄", "done": false}, {"id": 75, "activity": "Sailing", "category": "Water Sports", "icon": "⛵", "done": false}, {"id": 76, "activity": "Surfing", "category": "Water Sports", "icon": "🏄", "done": false}, {"id": 77, "activity": "Kite Boarding", "category": "Water Sports", "icon": "🪁", "done": false}, {"id": 78, "activity": "Wakeboarding", "category": "Water Sports", "icon": "🏄‍♀️", "done": false}, {"id": 79, "activity": "Water Skiing", "category": "Water Sports", "icon": "🚤", "done": false}, {"id": 80, "activity": "Skiing", "category": "Snow Sports", "icon": "⛷️", "done": false}, {"id": 81, "activity": "Snowboarding", "category": "Snow Sports", "icon": "🏂", "done": false}, {"id": 82, "activity": "Cross Country Skiing", "category": "Snow Sports", "icon": "🎿", "done": false}, {"id": 83, "activity": "Mountain Biking", "category": "Wheels", "icon": "🚵", "done": false}, {"id": 84, "activity": "Golf", "category": "Casual Games", "icon": "⛳", "done": false}, {"id": 85, "activity": "Horseback Riding", "category": "Extreme Adventure", "icon": "🐎", "done": false}, {"id": 86, "activity": "Fencing", "category": "Combat Sports", "icon": "🤺", "done": false}, {"id": 87, "activity": "Paintball", "category": "Extreme Adventure", "icon": "🎯", "done": false}, {"id": 88, "activity": "Motor Racing", "category": "Extreme Adventure", "icon": "🏎️", "done": false}, {"id": 89, "activity": "Motocross", "category": "Extreme Adventure", "icon": "🏍️", "done": false}, {"id": 90, "activity": "Wheelchair Pushing", "category": "Wheels", "icon": "♿", "done": false}, {"id": 91, "activity": "Triathlon", "category": "Everyday Cardio", "icon": "🏁", "done": false}, {"id": 92, "activity": "Duathlon", "category": "Everyday Cardio", "icon": "🏁", "done": false}, {"id": 93, "activity": "Obstacle Course Racing", "category": "Extreme Adventure", "icon": "🧗‍♂️", "done": false}, {"id": 94, "activity": "Canoeing", "category": "Water Sports", "icon": "🛶", "done": false}, {"id": 95, "activity": "Curling", "category": "Snow Sports", "icon": "🥌", "done": false}, {"id": 96, "activity": "Freediving", "category": "Water Sports", "icon": "🤿", "done": false}, {"id": 97, "activity": "Hand Cycling", "category": "Wheels", "icon": "🚴", "done": false}, {"id": 98, "activity": "Jet Skiing", "category": "Water Sports", "icon": "🚤", "done": false}, {"id": 99, "activity": "Mountaineering", "category": "Extreme Adventure", "icon": "🏔️", "done": false}, {"id": 100, "activity": "Ski Touring", "category": "Snow Sports", "icon": "🎿", "done": false}, {"id": 101, "activity": "Snowshoeing", "category": "Snow Sports", "icon": "❄️", "done": false}, {"id": 102, "activity": "Sport Fishing", "category": "Water Sports", "icon": "🎣", "done": false}, {"id": 103, "activity": "Thrill Ride", "category": "Extreme Adventure", "icon": "🎢", "done": false}, {"id": 104, "activity": "Unicycling", "category": "Wheels", "icon": "🤹", "done": false}, {"id": 105, "activity": "Baseball", "category": "Ball Sports", "icon": "⚾", "done": false}, {"id": 106, "activity": "Softball", "category": "Ball Sports", "icon": "🥎", "done": false}, {"id": 107, "activity": "American Football", "category": "Ball Sports", "icon": "🏈", "done": false}, {"id": 108, "activity": "Australian Football", "category": "Niche Sports", "icon": "🏉", "done": false}, {"id": 109, "activity": "Ice Hockey", "category": "Niche Sports", "icon": "🏒", "done": false}, {"id": 110, "activity": "Field Hockey", "category": "Niche Sports", "icon": "🏑", "done": false}, {"id": 111, "activity": "Lacrosse", "category": "Niche Sports", "icon": "🥍", "done": false}, {"id": 112, "activity": "Rugby", "category": "Ball Sports", "icon": "🏉", "done": false}, {"id": 113, "activity": "Cricket", "category": "Niche Sports", "icon": "🏏", "done": false}, {"id": 114, "activity": "Gaelic Football", "category": "Niche Sports", "icon": "🍀", "done": false}, {"id": 115, "activity": "Hurling/Camogie", "category": "Niche Sports", "icon": "🏑", "done": false}, {"id": 116, "activity": "Polo", "category": "Niche Sports", "icon": "🐎", "done": false}, {"id": 117, "activity": "Water Polo", "category": "Ball Sports", "icon": "🤽", "done": false}, {"id": 118, "activity": "Diving", "category": "Water Sports", "icon": "🤿", "done": false}, {"id": 119, "activity": "Refereeing", "category": "Side Gigs", "icon": "🟨", "done": false}, {"id": 120, "activity": "Winter Biathlon", "category": "Snow Sports", "icon": "🔫", "done": false}, {"id": 121, "activity": "Stretching", "category": "Quick Recovery", "icon": "🤸", "done": false}, {"id": 122, "activity": "Meditation", "category": "Quick Recovery", "icon": "🧘", "done": false}, {"id": 123, "activity": "Ice Bath", "category": "Spa Recovery", "icon": "🧊", "done": false}, {"id": 124, "activity": "Massage Therapy", "category": "Spa Recovery", "icon": "💆", "done": false}, {"id": 125, "activity": "Percussive Massage", "category": "Spa Recovery", "icon": "💆‍♂️", "done": false}, {"id": 126, "activity": "Air Compression", "category": "Spa Recovery", "icon": "🦵", "done": false}, {"id": 127, "activity": "Acupuncture", "category": "Spa Recovery", "icon": "💉", "done": false}, {"id": 128, "activity": "Breathwork", "category": "Quick Recovery", "icon": "🌬️", "done": false}, {"id": 129, "activity": "Bright Light Therapy", "category": "Spa Recovery", "icon": "💡", "done": false}, {"id": 130, "activity": "Chiropractor", "category": "Spa Recovery", "icon": "🦴", "done": false}, {"id": 131, "activity": "Cold Shower", "category": "Quick Recovery", "icon": "🚿", "done": false}, {"id": 132, "activity": "Contrast Therapy", "category": "Spa Recovery", "icon": "🌡️", "done": false}, {"id": 133, "activity": "Dry Sauna", "category": "Spa Recovery", "icon": "🧖", "done": false}, {"id": 134, "activity": "Foam Rolling", "category": "Quick Recovery", "icon": "🧻", "done": false}, {"id": 135, "activity": "Hot Tub", "category": "Quick Recovery", "icon": "♨️", "done": false}, {"id": 136, "activity": "Infrared Sauna", "category": "Spa Recovery", "icon": "🔥", "done": false}, {"id": 137, "activity": "Nap", "category": "Quick Recovery", "icon": "😴", "done": false}, {"id": 138, "activity": "Non-Sleep Deep Rest", "category": "Quick Recovery", "icon": "💤", "done": false}, {"id": 139, "activity": "Other - Recovery", "category": "Quick Recovery", "icon": "➕", "done": false}, {"id": 140, "activity": "Physical Therapy", "category": "Spa Recovery", "icon": "🩹", "done": false}, {"id": 141, "activity": "Red Light Therapy", "category": "Spa Recovery", "icon": "🔴", "done": false}, {"id": 142, "activity": "Restorative Yoga", "category": "Quick Recovery", "icon": "🧘‍♀️", "done": false}, {"id": 143, "activity": "Sleep", "category": "Quick Recovery", "icon": "🌙", "done": false}, {"id": 144, "activity": "Sound Healing", "category": "Spa Recovery", "icon": "🎶", "done": false}, {"id": 145, "activity": "Steam Room", "category": "Spa Recovery", "icon": "🌫️", "done": false}, {"id": 146, "activity": "Vagus Nerve Stimulation", "category": "Quick Recovery", "icon": "🧠", "done": false}, {"id": 147, "activity": "Warm Bath", "category": "Quick Recovery", "icon": "🛁", "done": false}, {"id": 148, "activity": "Cooking", "category": "Life", "icon": "🍳", "done": false}, {"id": 149, "activity": "Cleaning", "category": "Life", "icon": "🧹", "done": false}, {"id": 150, "activity": "Yard Work/Gardening", "category": "Life", "icon": "🌱", "done": false}, {"id": 151, "activity": "Manual Labor", "category": "Life", "icon": "🛠️", "done": false}, {"id": 152, "activity": "Commuting", "category": "Life", "icon": "🚗", "done": false}, {"id": 153, "activity": "Air Travel", "category": "Life", "icon": "✈️", "done": false}, {"id": 154, "activity": "Gaming", "category": "Casual Games", "icon": "🎮", "done": false}, {"id": 155, "activity": "Watching Sports", "category": "Life", "icon": "📺", "done": false}, {"id": 156, "activity": "Coaching", "category": "Side Gigs", "icon": "📋", "done": false}, {"id": 157, "activity": "High Stress Work", "category": "Life", "icon": "😤", "done": false}, {"id": 158, "activity": "Other", "category": "Other", "icon": "🔘", "done": false}, {"id": 159, "activity": "Caddying", "category": "Side Gigs", "icon": "🏌️", "done": false}, {"id": 160, "activity": "Dog Walking", "category": "Life", "icon": "🐕", "done": false}, {"id": 161, "activity": "Stroller Walking", "category": "Family", "icon": "🚶‍♀️", "done": false}, {"id": 162, "activity": "Stroller Jogging", "category": "Family", "icon": "🏃‍♀️", "done": false}, {"id": 163, "activity": "Babywearing", "category": "Family", "icon": "🤱", "done": false}, {"id": 164, "activity": "Toddlerwearing", "category": "Family", "icon": "🧒", "done": false}, {"id": 165, "activity": "Dedicated Parenting", "category": "Family", "icon": "👨‍👩‍👧", "done": false}, {"id": 166, "activity": "Operations - Tactical", "category": "Other", "icon": "🎖️", "done": false}, {"id": 167, "activity": "Operations - Medical", "category": "Other", "icon": "🚑", "done": false}, {"id": 168, "activity": "Operations - Flying", "category": "Other", "icon": "🛩️", "done": false}, {"id": 169, "activity": "Operations - Water", "category": "Other", "icon": "🚤", "done": false}, {"id": 170, "activity": "Bartending", "category": "Side Gigs", "icon": "🍸", "done": false}, {"id": 171, "activity": "Chess", "category": "Casual Games", "icon": "♟️", "done": false}, {"id": 172, "activity": "Cuddling With Child", "category": "Family", "icon": "🤗", "done": false}, {"id": 173, "activity": "Driving", "category": "Life", "icon": "🚗", "done": false}, {"id": 174, "activity": "Firefighting", "category": "Other", "icon": "🚒", "done": false}, {"id": 175, "activity": "Knitting", "category": "Life", "icon": "🧶", "done": false}, {"id": 176, "activity": "Nursing A Baby", "category": "Family", "icon": "🍼", "done": false}, {"id": 177, "activity": "Playing With Child", "category": "Family", "icon": "🧸", "done": false}, {"id": 178, "activity": "Poker", "category": "Casual Games", "icon": "🃏", "done": false}, {"id": 179, "activity": "Pumping", "category": "Family", "icon": "🍼", "done": false}, {"id": 180, "activity": "Snow Shoveling", "category": "Life", "icon": "🌨️", "done": false}, {"id": 181, "activity": "Woodchopping", "category": "Life", "icon": "🪓", "done": false}, {"id": 182, "activity": "Barre", "category": "Group Fitness", "icon": "🩰", "done": false}, {"id": 183, "activity": "Barre3", "category": "Group Fitness", "icon": "🩰", "done": false}, {"id": 184, "activity": "Dance", "category": "Performance", "icon": "💃", "done": false}, {"id": 185, "activity": "Circus Arts", "category": "Extreme Adventure", "icon": "🎪", "done": false}, {"id": 186, "activity": "Gymnastics", "category": "Side Gigs", "icon": "🤸‍♀️", "done": false}, {"id": 187, "activity": "Hot Yoga", "category": "Group Fitness", "icon": "🥵", "done": false}, {"id": 188, "activity": "Jiu Jitsu", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 189, "activity": "Wrestling", "category": "Combat Sports", "icon": "🤼", "done": false}, {"id": 190, "activity": "Parkour", "category": "Extreme Adventure", "icon": "🏃‍♂️", "done": false}, {"id": 191, "activity": "Public Speaking", "category": "Performance", "icon": "🎤", "done": false}, {"id": 192, "activity": "Musical Performance", "category": "Performance", "icon": "🎵", "done": false}, {"id": 193, "activity": "Stage Performance", "category": "Performance", "icon": "🎭", "done": false}, {"id": 194, "activity": "Ballet", "category": "Performance", "icon": "🩰", "done": false}, {"id": 195, "activity": "Breakdancing", "category": "Performance", "icon": "🕺", "done": false}, {"id": 196, "activity": "Cheerleading", "category": "Side Gigs", "icon": "📣", "done": false}, {"id": 197, "activity": "DJ", "category": "Performance", "icon": "🎧", "done": false}, {"id": 198, "activity": "Hot Dog Challenge", "category": "Side Gigs", "icon": "🌭", "done": false}, {"id": 199, "activity": "Judo", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 200, "activity": "Skydiving", "category": "Extreme Adventure", "icon": "🪂", "done": false}];
+
+const CATEGORY_ORDER = ["Everyday Cardio", "Home Gym", "Group Fitness", "Wheels", "Combat Sports", "Racquet Sports", "Casual Games", "Ball Sports", "Niche Sports", "Water Sports", "Snow Sports", "Extreme Adventure", "Performance", "Side Gigs", "Quick Recovery", "Spa Recovery", "Life", "Family", "Other"];
+
+let state = { category: "all", status: "all", sort: "category" };
+
+function getCategories() {
+  const set = new Set(ACTIVITIES.map(a => a.category));
+  return CATEGORY_ORDER.filter(c => set.has(c));
+}
+
+function renderDashboard() {
+  const total = ACTIVITIES.length;
+  const done = ACTIVITIES.filter(a => a.done).length;
+  const pending = total - done;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  document.getElementById('overallPct').textContent = pct + '%';
+  document.getElementById('overallCount').textContent = `${done} / ${total} complete`;
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('pendingCount').textContent = pending;
+
+  const circumference = 251.2;
+  const offset = circumference - (circumference * pct / 100);
+  document.getElementById('ringFg').style.strokeDashoffset = offset;
+
+  const catBars = document.getElementById('catBars');
+  catBars.innerHTML = '';
+  const allCats = getCategories();
+  const incompleteCats = [];
+  const completeCats = [];
+  allCats.forEach(cat => {
+    const items = ACTIVITIES.filter(a => a.category === cat);
+    const catDone = items.filter(a => a.done).length;
+    if (items.length && catDone === items.length) {
+      completeCats.push(cat);
+    } else {
+      incompleteCats.push(cat);
+    }
+  });
+  const orderedCats = incompleteCats.concat(completeCats);
+  orderedCats.forEach(cat => {
+    const items = ACTIVITIES.filter(a => a.category === cat);
+    const catDone = items.filter(a => a.done).length;
+    const catPct = items.length ? Math.round((catDone / items.length) * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'cat-bar-row';
+    row.innerHTML = `
+      <div class="cat-bar-head"><span>${cat}</span><b>${catDone}/${items.length} · ${catPct}%</b></div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${catPct}%"></div></div>
+    `;
+    catBars.appendChild(row);
+  });
+}
+
+function renderSuggested() {
+  const pendingItems = ACTIVITIES.filter(a => !a.done);
+  const shuffled = [...pendingItems].sort(() => Math.random() - 0.5);
+  const picks = [];
+  const seenCats = new Set();
+  for (const item of shuffled) {
+    if (picks.length >= 3) break;
+    if (!seenCats.has(item.category)) {
+      picks.push(item);
+      seenCats.add(item.category);
+    }
+  }
+  for (const item of shuffled) {
+    if (picks.length >= 3) break;
+    if (!picks.includes(item)) picks.push(item);
+  }
+
+  const row = document.getElementById('suggestRow');
+  row.innerHTML = '';
+  if (picks.length === 0) {
+    row.innerHTML = `<div class="suggest-card"><div class="suggest-name">🎉 All done!</div></div>`;
+    return;
+  }
+  picks.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'suggest-card';
+    card.innerHTML = `
+      <div class="suggest-icon">${p.icon}</div>
+      <div class="suggest-name">${p.activity}</div>
+      <div class="suggest-cat">${p.category}</div>
+    `;
+    row.appendChild(card);
+  });
+}
+
+function getFilteredItems() {
+  let items = [...ACTIVITIES];
+  if (state.category !== 'all') items = items.filter(a => a.category === state.category);
+  if (state.status === 'done') items = items.filter(a => a.done);
+  if (state.status === 'pending') items = items.filter(a => !a.done);
+  return items;
+}
+
+function pickRandom() {
+  const scoped = getFilteredItems().filter(a => !a.done);
+  if (scoped.length === 0) {
+    document.getElementById('randomName').innerHTML = '🎉 All done!';
+    document.getElementById('randomCat').textContent = '';
+    return;
+  }
+  const pick = scoped[Math.floor(Math.random() * scoped.length)];
+  document.getElementById('randomName').innerHTML = `<span class="random-pick-icon">${pick.icon}</span>${pick.activity}`;
+  document.getElementById('randomCat').textContent = pick.category;
+}
+
+function renderChips() {
+  const catWrap = document.getElementById('categoryChips');
+  catWrap.innerHTML = '<div class="chip active" data-cat="all">All</div>' +
+    getCategories().map(c => `<div class="chip" data-cat="${c}">${c}</div>`).join('');
+
+  catWrap.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      catWrap.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.category = chip.dataset.cat;
+      renderBento();
+      pickRandom();
+    });
+  });
+
+  document.getElementById('statusChips').querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.status = chip.dataset.status;
+      renderBento();
+      pickRandom();
+    });
+  });
+
+  document.getElementById('sortChips').querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.sort = chip.dataset.sort;
+      renderBento();
+    });
+  });
+}
+
+function renderBento() {
+  let items = getFilteredItems();
+
+  const grid = document.getElementById('bentoGrid');
+  const empty = document.getElementById('emptyState');
+  grid.innerHTML = '';
+
+  if (items.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  if (state.sort === 'alpha') {
+    items.sort((a, b) => a.activity.localeCompare(b.activity));
+    items.forEach(item => grid.appendChild(buildBentoCard(item)));
+    return;
+  }
+
+  const cats = getCategories().filter(c => items.some(i => i.category === c));
+  cats.forEach(cat => {
+    const catItems = items.filter(i => i.category === cat).sort((a, b) => a.activity.localeCompare(b.activity));
+    const doneCount = catItems.filter(i => i.done).length;
+
+    const header = document.createElement('div');
+    header.className = 'category-section';
+    header.innerHTML = `
+      <div class="category-section-title">${cat}</div>
+      <div class="category-section-count">${doneCount}/${catItems.length}</div>
+    `;
+    grid.appendChild(header);
+
+    catItems.forEach(item => grid.appendChild(buildBentoCard(item)));
+  });
+}
+
+function isActivityPlanned(id) {
+  for (const dateKey in SCHEDULE_DATA) {
+    const entries = SCHEDULE_DATA[dateKey];
+    if (entries && entries.some(e => e.id === id)) return true;
+  }
+  return false;
+}
+
+function buildBentoCard(item) {
+  const card = document.createElement('div');
+  card.className = 'bento-card' + (item.done ? ' done' : '');
+  card.dataset.id = item.id;
+  const plannedBadge = isActivityPlanned(item.id) ? '<div class="bento-planned-badge">📅 Planned</div>' : '';
+  card.innerHTML = `
+    <div class="bento-status-dot"></div>
+    <div class="bento-icon">${item.icon}</div>
+    <div class="bento-name">${item.activity}</div>
+    ${plannedBadge}
+  `;
+  return card;
+}
+
+document.getElementById('shuffleBtn').addEventListener('click', pickRandom);
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- Scheduling (read-only view) ----------
+const SCHEDULE_START = "";
+const SCHEDULE_DATA = {};
+const SLOT_ORDER = ["AM", "PM", "Night"];
+
+function findActivityById(id) {
+  return ACTIVITIES.find(a => a.id === id);
+}
+
+function formatDateLabel(d) {
+  return d.toLocaleDateString(undefined, { weekday: 'long' });
+}
+function formatDateShort(d) {
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function renderSchedule() {
+  const weeksContainer = document.getElementById('schedWeeks');
+  const dateDisplay = document.getElementById('schedStartDateDisplay');
+  const counterEl = document.getElementById('schedCounter');
+  if (!weeksContainer) return;
+
+  if (!SCHEDULE_START) {
+    dateDisplay.textContent = 'Not set';
+    if (counterEl) counterEl.textContent = '0 activities planned';
+    weeksContainer.innerHTML = '<div class="empty-state">No schedule has been set up yet.</div>';
+    return;
+  }
+
+  const startDate = new Date(SCHEDULE_START + 'T00:00:00');
+  dateDisplay.textContent = startDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Anchor the grid to the Sunday on/before the chosen start date, so every row is a full Sun–Sat week.
+  const gridAnchor = new Date(startDate);
+  gridAnchor.setDate(gridAnchor.getDate() - gridAnchor.getDay());
+
+  // If the start date isn't a Sunday, the partial lead-in days push a 5th row to cover the full 4 weeks from start.
+  const numWeeks = gridAnchor.getTime() === startDate.getTime() ? 4 : 5;
+
+  weeksContainer.innerHTML = '';
+
+  const headRow = document.createElement('div');
+  headRow.className = 'sched-weekday-row';
+  headRow.innerHTML = WEEKDAY_LABELS.map(l => `<div class="sched-weekday-head">${l}</div>`).join('');
+  weeksContainer.appendChild(headRow);
+
+  let totalPlanned = 0;
+
+  for (let week = 0; week < numWeeks; week++) {
+    const weekRow = document.createElement('div');
+    weekRow.className = 'sched-week-row';
+
+    for (let d = 0; d < 7; d++) {
+      const dayIndex = week * 7 + d;
+      const dayDate = new Date(gridAnchor);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      const dateKey = dayDate.toISOString().slice(0, 10);
+      const isOutside = dayDate < startDate;
+
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'sched-day' + (isOutside ? ' outside' : '');
+
+      const entries = SCHEDULE_DATA[dateKey] || [];
+      totalPlanned += entries.length;
+      let entriesHtml = '';
+      if (entries.length === 0) {
+        entriesHtml = '<div class="sched-empty-slot">Nothing planned</div>';
+      } else {
+        entriesHtml = entries.map(entry => {
+          const act = findActivityById(entry.id);
+          if (!act) return '';
+          const tagHtml = entry.tag
+            ? `<span class="sched-entry-tag">${entry.tag}</span>`
+            : '';
+          return `<div class="sched-entry"><span class="sched-entry-icon">${act.icon}</span><span class="sched-entry-name">${act.activity}</span>${tagHtml}</div>`;
+        }).join('');
+      }
+
+      dayDiv.innerHTML = `
+        <div class="sched-day-head">
+          <div class="sched-day-name">${formatDateLabel(dayDate)}</div>
+          <div class="sched-day-date">${formatDateShort(dayDate)}</div>
+        </div>
+        ${entriesHtml}
+      `;
+      weekRow.appendChild(dayDiv);
+    }
+    weeksContainer.appendChild(weekRow);
+  }
+
+  if (counterEl) {
+    counterEl.textContent = `${totalPlanned} ${totalPlanned === 1 ? 'activity' : 'activities'} planned`;
+  }
+}
+
+renderDashboard();
+renderSuggested();
+renderChips();
+renderBento();
+pickRandom();
+renderSchedule();
+</script>
+</body>
+</html>

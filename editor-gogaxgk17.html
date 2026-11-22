@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Tracker — Editor</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #151823;
+    --panel2: #1c2030;
+    --border: #2a2f42;
+    --text: #e8eaf0;
+    --muted: #8b90a3;
+    --accent: #5ec8ff;
+    --accent2: #7af0c2;
+    --warn: #ffcf5e;
+    --done: #58d38a;
+    --pending: #ff8a8a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Segoe UI, Roboto, sans-serif;
+    padding: 12px;
+    padding-bottom: 60px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 4px 0 14px;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+  h2.section-title {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 22px 4px 10px;
+  }
+
+  /* ---------- Dashboard ---------- */
+  .dash-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-card.wide { grid-column: 1 / -1; }
+  .stat-num {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  svg.ring { width: 86px; height: 86px; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 10; }
+  .ring-fg { fill: none; stroke: var(--accent2); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .ring-text {
+    position: relative;
+  }
+  .ring-pct { font-size: 1.5rem; font-weight: 700; }
+
+  .cat-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .cat-bar-row { }
+  .cat-bar-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+    color: var(--muted);
+  }
+  .cat-bar-head b { color: var(--text); }
+  .cat-bar-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .cat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    transition: width 0.5s ease;
+  }
+
+  /* ---------- Suggested Next ---------- */
+  .suggest-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .suggest-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+  }
+  .suggest-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  .suggest-name {
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .suggest-cat {
+    font-size: 0.72rem;
+    color: var(--accent);
+    margin-top: 2px;
+  }
+
+  .random-pick {
+    background: linear-gradient(135deg, #2a1f3d, #1a2740);
+    border: 1px solid #3c3560;
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .random-pick-left { display: flex; flex-direction: column; gap: 2px; }
+  .random-pick-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--warn);
+  }
+  .random-pick-name { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .random-pick-icon { font-size: 1.3rem; }
+  .random-pick-cat { font-size: 0.78rem; color: var(--muted); }
+  .shuffle-btn {
+    background: var(--accent);
+    color: #0b0d12;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .shuffle-btn:active { transform: scale(0.96); }
+
+  /* ---------- Filters ---------- */
+  .filter-block { margin-top: 18px; }
+  .filter-group-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 10px 4px 6px;
+  }
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .chip.active {
+    background: var(--accent);
+    color: #0b0d12;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ---------- Bento grid ---------- */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .bento-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 74px;
+    position: relative;
+  }
+  .bento-card.done {
+    border-color: rgba(88, 211, 138, 0.4);
+    background: linear-gradient(145deg, rgba(88,211,138,0.08), var(--panel));
+  }
+  .bento-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .bento-status-dot {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--pending);
+  }
+  .bento-card.done .bento-status-dot { background: var(--done); }
+  .bento-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding-right: 14px;
+  }
+  .bento-cat {
+    display: none;
+  }
+  .bento-planned-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--warn);
+    background: rgba(255, 207, 94, 0.12);
+    border: 1px solid rgba(255, 207, 94, 0.35);
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-top: auto;
+    align-self: flex-start;
+  }
+
+  .category-section {
+    grid-column: 1 / -1;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+  .category-section:first-child { margin-top: 4px; }
+  .category-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .category-section-count {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 30px 10px;
+    font-size: 0.85rem;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.68rem;
+    margin-top: 30px;
+    opacity: 0.6;
+  }
+
+  @media (min-width: 480px) {
+    .bento-grid { grid-template-columns: repeat(3, 1fr); }
+    .suggest-row { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .edit-badge {
+    display: inline-block;
+    background: var(--warn);
+    color: #241a00;
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 6px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  /* ---------- Tabs ---------- */
+  .tab-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 9px 8px;
+    border-radius: 9px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #0b0d12;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---------- Scheduling ---------- */
+  .sched-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+  .sched-date-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .sched-date-input {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+  }
+  .sched-grid-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .sched-weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(104px, 1fr));
+    gap: 6px;
+    margin-bottom: 6px;
+    min-width: 770px;
+  }
+  .sched-weekday-head {
+    text-align: center;
+    font-size: 0.64rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 700;
+    padding: 2px 0;
+  }
+  .sched-week-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(104px, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+    min-width: 770px;
+  }
+  .sched-day {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px;
+  }
+  .sched-day.outside {
+    opacity: 0.35;
+  }
+  .sched-day-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 6px;
+  }
+  .sched-day-name {
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+  .sched-day-date {
+    font-size: 0.6rem;
+    color: var(--muted);
+  }
+  .sched-counter {
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent2);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 14px;
+  }
+  .sched-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+    position: relative;
+  }
+  .sched-entry-icon { font-size: 1rem; }
+  .sched-entry-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sched-entry-tag {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: rgba(94, 200, 255, 0.12);
+    border: 1px solid rgba(94, 200, 255, 0.3);
+    border-radius: 6px;
+    padding: 2px 5px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sched-entry-tag.untagged {
+    color: var(--muted);
+    background: transparent;
+    border-style: dashed;
+  }
+  .sched-entry-remove {
+    color: var(--pending);
+    cursor: pointer;
+    font-weight: 700;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+  .sched-empty-slot {
+    font-size: 0.74rem;
+    color: var(--muted);
+    opacity: 0.6;
+    padding: 2px 0;
+  }
+  .sched-add-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    position: relative;
+  }
+  .sched-select {
+    flex: 1;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+  }
+  .sched-add-btn {
+    background: var(--accent2);
+    color: #0b0d12;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sched-tag-menu {
+    position: absolute;
+    z-index: 20;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+  .sched-tag-menu-opt {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .sched-tag-menu-opt:hover { background: var(--accent); color: #0b0d12; }
+  .sched-combo {
+    position: relative;
+    flex: 1;
+  }
+  .sched-combo-input {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+  }
+  .sched-combo-list {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    z-index: 30;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.5);
+    display: none;
+  }
+  .sched-combo-list.open { display: block; }
+  .sched-combo-group-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    padding: 6px 8px 2px;
+    font-weight: 700;
+  }
+  .sched-combo-opt {
+    padding: 7px 8px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sched-combo-opt:hover { background: var(--panel); }
+  .sched-combo-opt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sched-combo-status {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 5px;
+    flex-shrink: 0;
+  }
+  .sched-combo-status.done { color: var(--done); background: rgba(88,211,138,0.12); }
+  .sched-combo-status.planned { color: var(--warn); background: rgba(255,207,94,0.12); }
+  .sched-combo-empty {
+    padding: 10px 8px;
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+  .editor-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .toolbar-btn {
+    flex: 1;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .toolbar-btn.primary {
+    background: var(--accent2);
+    color: #0b0d12;
+    border-color: var(--accent2);
+  }
+  .toolbar-btn:active { transform: scale(0.97); }
+  .editor-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+  .bento-card { cursor: pointer; transition: transform 0.1s ease; }
+  .bento-card:active { transform: scale(0.96); }
+  .toast {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 999;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<h1>🎯 Activity Tracker <span class="edit-badge">EDITOR</span></h1>
+<div class="editor-toolbar">
+  <button class="toolbar-btn primary" id="exportBtn">⬇️ Export Updated Site</button>
+  <button class="toolbar-btn" id="resetBtn">↺ Reset All</button>
+</div>
+<div class="editor-hint">Tap any activity below to toggle complete / pending. Changes save to this browser only — use <b>Export</b> to generate the updated public file.</div>
+
+<div class="tab-row">
+  <div class="tab-btn active" data-tab="dashboard">Dashboard</div>
+  <div class="tab-btn" data-tab="scheduling">Schedule</div>
+</div>
+
+<div id="tab-dashboard" class="tab-panel active">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="dash-grid">
+  <div class="stat-card wide ring-wrap">
+    <svg class="ring" viewBox="0 0 100 100">
+      <circle class="ring-bg" cx="50" cy="50" r="40"></circle>
+      <circle class="ring-fg" id="ringFg" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+    </svg>
+    <div>
+      <div class="ring-pct" id="overallPct">0%</div>
+      <div class="stat-label" id="overallCount">0 / 0 complete</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="doneCount">0</div>
+    <div class="stat-label">Completed</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="pendingCount">0</div>
+    <div class="stat-label">Pending</div>
+  </div>
+</div>
+
+<h2 class="section-title">By Category</h2>
+<div class="stat-card wide">
+  <div class="cat-bars" id="catBars"></div>
+</div>
+
+<!-- ===== SUGGESTED NEXT ===== -->
+<h2 class="section-title">Suggested Next</h2>
+<div class="suggest-row" id="suggestRow"></div>
+
+<div class="random-pick">
+  <div class="random-pick-left">
+    <div class="random-pick-label">🎲 Random Pick</div>
+    <div class="random-pick-name" id="randomName">—</div>
+    <div class="random-pick-cat" id="randomCat">—</div>
+  </div>
+  <button class="shuffle-btn" id="shuffleBtn">Shuffle 🔀</button>
+</div>
+
+<!-- ===== FILTERS ===== -->
+<div class="filter-block">
+  <h2 class="section-title" style="margin-top:0;">All Activities</h2>
+
+  <div class="filter-group-label">Category</div>
+  <div class="chip-row" id="categoryChips"></div>
+
+  <div class="filter-group-label">Status</div>
+  <div class="chip-row" id="statusChips">
+    <div class="chip active" data-status="all">All</div>
+    <div class="chip" data-status="done">Completed</div>
+    <div class="chip" data-status="pending">Pending</div>
+  </div>
+
+  <div class="filter-group-label">Sort</div>
+  <div class="chip-row" id="sortChips">
+    <div class="chip active" data-sort="category">By Category</div>
+    <div class="chip" data-sort="alpha">Alphabetical</div>
+  </div>
+</div>
+
+<!-- ===== BENTO LIST ===== -->
+<div class="bento-grid" id="bentoGrid"></div>
+<div class="empty-state" id="emptyState" style="display:none;">No activities match these filters.</div>
+
+</div>
+
+<!-- ===== SCHEDULE TAB ===== -->
+<div id="tab-scheduling" class="tab-panel">
+  <div class="sched-toolbar">
+    <div class="sched-date-label">Start date</div>
+    <input type="date" id="schedStartDate" class="sched-date-input">
+  </div>
+  <div class="sched-counter" id="schedCounter">0 activities planned</div>
+  <div class="sched-grid-scroll"><div id="schedWeeks"></div></div>
+</div>
+
+<footer>Private editor · not for public hosting · export to update the public report</footer>
+
+<script>
+const ACTIVITIES = [{"id": 0, "activity": "Running", "category": "Everyday Cardio", "icon": "🏃", "done": false}, {"id": 1, "activity": "Cycling", "category": "Everyday Cardio", "icon": "🚴", "done": false}, {"id": 2, "activity": "Swimming", "category": "Everyday Cardio", "icon": "🏊", "done": false}, {"id": 3, "activity": "Walking", "category": "Everyday Cardio", "icon": "🚶", "done": false}, {"id": 4, "activity": "Hiking/Rucking", "category": "Everyday Cardio", "icon": "🥾", "done": false}, {"id": 5, "activity": "Strength Trainer", "category": "Home Gym", "icon": "🏋️", "done": false}, {"id": 6, "activity": "Weightlifting", "category": "Home Gym", "icon": "🏋️‍♂️", "done": false}, {"id": 7, "activity": "Powerlifting", "category": "Home Gym", "icon": "🏋️‍♀️", "done": false}, {"id": 8, "activity": "Functional Fitness", "category": "Everyday Cardio", "icon": "💪", "done": false}, {"id": 9, "activity": "HIIT", "category": "Everyday Cardio", "icon": "🔥", "done": false}, {"id": 10, "activity": "Elliptical", "category": "Home Gym", "icon": "🌀", "done": false}, {"id": 11, "activity": "Stairmaster", "category": "Home Gym", "icon": "🪜", "done": false}, {"id": 12, "activity": "Stadium Steps", "category": "Everyday Cardio", "icon": "🏟️", "done": false}, {"id": 13, "activity": "Assault Bike", "category": "Home Gym", "icon": "🚲", "done": false}, {"id": 14, "activity": "Rowing", "category": "Water Sports", "icon": "🚣", "done": false}, {"id": 15, "activity": "Spin", "category": "Group Fitness", "icon": "🚴‍♀️", "done": false}, {"id": 16, "activity": "Jumping Rope", "category": "Everyday Cardio", "icon": "🪢", "done": false}, {"id": 17, "activity": "Yoga", "category": "Group Fitness", "icon": "🧘", "done": false}, {"id": 18, "activity": "Pilates", "category": "Group Fitness", "icon": "🤸", "done": false}, {"id": 19, "activity": "Bodybuilding", "category": "Home Gym", "icon": "💪", "done": false}, {"id": 20, "activity": "Race Walking", "category": "Everyday Cardio", "icon": "🚶‍♂️", "done": false}, {"id": 21, "activity": "Rucking", "category": "Everyday Cardio", "icon": "🎒", "done": false}, {"id": 22, "activity": "Ski Erg", "category": "Home Gym", "icon": "⛷️", "done": false}, {"id": 23, "activity": "Sprint Training", "category": "Everyday Cardio", "icon": "🏃‍♀️", "done": false}, {"id": 24, "activity": "Trail Running", "category": "Everyday Cardio", "icon": "🏞️", "done": false}, {"id": 25, "activity": "Vertical Climber", "category": "Home Gym", "icon": "🧗", "done": false}, {"id": 26, "activity": "Barry’s", "category": "Group Fitness", "icon": "🔥", "done": false}, {"id": 27, "activity": "F45", "category": "Group Fitness", "icon": "🏋️", "done": false}, {"id": 28, "activity": "Box Fitness", "category": "Combat Sports", "icon": "🥊", "done": false}, {"id": 29, "activity": "Boxing", "category": "Combat Sports", "icon": "🥊", "done": false}, {"id": 30, "activity": "Kickboxing", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 31, "activity": "Martial Arts", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 32, "activity": "Ice Skating", "category": "Snow Sports", "icon": "⛸️", "done": false}, {"id": 33, "activity": "Inline Skating", "category": "Wheels", "icon": "🛼", "done": false}, {"id": 34, "activity": "Skateboarding", "category": "Wheels", "icon": "🛹", "done": false}, {"id": 35, "activity": "Rock Climbing", "category": "Extreme Adventure", "icon": "🧗", "done": false}, {"id": 36, "activity": "Pickleball", "category": "Racquet Sports", "icon": "🏓", "done": false}, {"id": 37, "activity": "Badminton", "category": "Racquet Sports", "icon": "🏸", "done": false}, {"id": 38, "activity": "Table Tennis", "category": "Racquet Sports", "icon": "🏓", "done": false}, {"id": 39, "activity": "Tennis", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 40, "activity": "Squash", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 41, "activity": "Padel", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 42, "activity": "Paddle Tennis", "category": "Racquet Sports", "icon": "🏓", "done": false}, {"id": 43, "activity": "Spikeball", "category": "Ball Sports", "icon": "🏐", "done": false}, {"id": 44, "activity": "Disc Golf", "category": "Casual Games", "icon": "🥏", "done": false}, {"id": 45, "activity": "Archery", "category": "Casual Games", "icon": "🏹", "done": false}, {"id": 46, "activity": "Volleyball", "category": "Ball Sports", "icon": "🏐", "done": false}, {"id": 47, "activity": "Basketball", "category": "Ball Sports", "icon": "🏀", "done": false}, {"id": 48, "activity": "Soccer", "category": "Ball Sports", "icon": "⚽", "done": false}, {"id": 49, "activity": "Handball", "category": "Ball Sports", "icon": "🤾", "done": false}, {"id": 50, "activity": "Netball", "category": "Ball Sports", "icon": "🏐", "done": false}, {"id": 51, "activity": "Track & Field", "category": "Everyday Cardio", "icon": "🏃", "done": false}, {"id": 52, "activity": "Billiards", "category": "Casual Games", "icon": "🎱", "done": false}, {"id": 53, "activity": "Bouldering", "category": "Extreme Adventure", "icon": "🧗", "done": false}, {"id": 54, "activity": "Bowling", "category": "Casual Games", "icon": "🎳", "done": false}, {"id": 55, "activity": "Darts", "category": "Casual Games", "icon": "🎯", "done": false}, {"id": 56, "activity": "Fishing", "category": "Water Sports", "icon": "🎣", "done": false}, {"id": 57, "activity": "Hacky Sack", "category": "Casual Games", "icon": "🧦", "done": false}, {"id": 58, "activity": "Kickball", "category": "Ball Sports", "icon": "⚽", "done": false}, {"id": 59, "activity": "Muay Thai", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 60, "activity": "Nordic Walking", "category": "Everyday Cardio", "icon": "🚶", "done": false}, {"id": 61, "activity": "Qigong", "category": "Group Fitness", "icon": "🧘", "done": false}, {"id": 62, "activity": "Racquetball", "category": "Racquet Sports", "icon": "🎾", "done": false}, {"id": 63, "activity": "Reformer Pilates", "category": "Group Fitness", "icon": "🤸", "done": false}, {"id": 64, "activity": "Roller Hockey", "category": "Niche Sports", "icon": "🏒", "done": false}, {"id": 65, "activity": "Scootering", "category": "Wheels", "icon": "🛴", "done": false}, {"id": 66, "activity": "Sculpt Yoga", "category": "Group Fitness", "icon": "🧘‍♀️", "done": false}, {"id": 67, "activity": "Solidcore", "category": "Group Fitness", "icon": "🏋️‍♀️", "done": false}, {"id": 68, "activity": "Taekwondo", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 69, "activity": "Tai Chi", "category": "Combat Sports", "icon": "🧘‍♂️", "done": false}, {"id": 70, "activity": "Trampoline", "category": "Home Gym", "icon": "🤸‍♂️", "done": false}, {"id": 71, "activity": "Ultimate Frisbee", "category": "Ball Sports", "icon": "🥏", "done": false}, {"id": 72, "activity": "Water Aerobics", "category": "Group Fitness", "icon": "🌊", "done": false}, {"id": 73, "activity": "Kayaking", "category": "Water Sports", "icon": "🛶", "done": false}, {"id": 74, "activity": "Paddleboarding", "category": "Water Sports", "icon": "🏄", "done": false}, {"id": 75, "activity": "Sailing", "category": "Water Sports", "icon": "⛵", "done": false}, {"id": 76, "activity": "Surfing", "category": "Water Sports", "icon": "🏄", "done": false}, {"id": 77, "activity": "Kite Boarding", "category": "Water Sports", "icon": "🪁", "done": false}, {"id": 78, "activity": "Wakeboarding", "category": "Water Sports", "icon": "🏄‍♀️", "done": false}, {"id": 79, "activity": "Water Skiing", "category": "Water Sports", "icon": "🚤", "done": false}, {"id": 80, "activity": "Skiing", "category": "Snow Sports", "icon": "⛷️", "done": false}, {"id": 81, "activity": "Snowboarding", "category": "Snow Sports", "icon": "🏂", "done": false}, {"id": 82, "activity": "Cross Country Skiing", "category": "Snow Sports", "icon": "🎿", "done": false}, {"id": 83, "activity": "Mountain Biking", "category": "Wheels", "icon": "🚵", "done": false}, {"id": 84, "activity": "Golf", "category": "Casual Games", "icon": "⛳", "done": false}, {"id": 85, "activity": "Horseback Riding", "category": "Extreme Adventure", "icon": "🐎", "done": false}, {"id": 86, "activity": "Fencing", "category": "Combat Sports", "icon": "🤺", "done": false}, {"id": 87, "activity": "Paintball", "category": "Extreme Adventure", "icon": "🎯", "done": false}, {"id": 88, "activity": "Motor Racing", "category": "Extreme Adventure", "icon": "🏎️", "done": false}, {"id": 89, "activity": "Motocross", "category": "Extreme Adventure", "icon": "🏍️", "done": false}, {"id": 90, "activity": "Wheelchair Pushing", "category": "Wheels", "icon": "♿", "done": false}, {"id": 91, "activity": "Triathlon", "category": "Everyday Cardio", "icon": "🏁", "done": false}, {"id": 92, "activity": "Duathlon", "category": "Everyday Cardio", "icon": "🏁", "done": false}, {"id": 93, "activity": "Obstacle Course Racing", "category": "Extreme Adventure", "icon": "🧗‍♂️", "done": false}, {"id": 94, "activity": "Canoeing", "category": "Water Sports", "icon": "🛶", "done": false}, {"id": 95, "activity": "Curling", "category": "Snow Sports", "icon": "🥌", "done": false}, {"id": 96, "activity": "Freediving", "category": "Water Sports", "icon": "🤿", "done": false}, {"id": 97, "activity": "Hand Cycling", "category": "Wheels", "icon": "🚴", "done": false}, {"id": 98, "activity": "Jet Skiing", "category": "Water Sports", "icon": "🚤", "done": false}, {"id": 99, "activity": "Mountaineering", "category": "Extreme Adventure", "icon": "🏔️", "done": false}, {"id": 100, "activity": "Ski Touring", "category": "Snow Sports", "icon": "🎿", "done": false}, {"id": 101, "activity": "Snowshoeing", "category": "Snow Sports", "icon": "❄️", "done": false}, {"id": 102, "activity": "Sport Fishing", "category": "Water Sports", "icon": "🎣", "done": false}, {"id": 103, "activity": "Thrill Ride", "category": "Extreme Adventure", "icon": "🎢", "done": false}, {"id": 104, "activity": "Unicycling", "category": "Wheels", "icon": "🤹", "done": false}, {"id": 105, "activity": "Baseball", "category": "Ball Sports", "icon": "⚾", "done": false}, {"id": 106, "activity": "Softball", "category": "Ball Sports", "icon": "🥎", "done": false}, {"id": 107, "activity": "American Football", "category": "Ball Sports", "icon": "🏈", "done": false}, {"id": 108, "activity": "Australian Football", "category": "Niche Sports", "icon": "🏉", "done": false}, {"id": 109, "activity": "Ice Hockey", "category": "Niche Sports", "icon": "🏒", "done": false}, {"id": 110, "activity": "Field Hockey", "category": "Niche Sports", "icon": "🏑", "done": false}, {"id": 111, "activity": "Lacrosse", "category": "Niche Sports", "icon": "🥍", "done": false}, {"id": 112, "activity": "Rugby", "category": "Ball Sports", "icon": "🏉", "done": false}, {"id": 113, "activity": "Cricket", "category": "Niche Sports", "icon": "🏏", "done": false}, {"id": 114, "activity": "Gaelic Football", "category": "Niche Sports", "icon": "🍀", "done": false}, {"id": 115, "activity": "Hurling/Camogie", "category": "Niche Sports", "icon": "🏑", "done": false}, {"id": 116, "activity": "Polo", "category": "Niche Sports", "icon": "🐎", "done": false}, {"id": 117, "activity": "Water Polo", "category": "Ball Sports", "icon": "🤽", "done": false}, {"id": 118, "activity": "Diving", "category": "Water Sports", "icon": "🤿", "done": false}, {"id": 119, "activity": "Refereeing", "category": "Side Gigs", "icon": "🟨", "done": false}, {"id": 120, "activity": "Winter Biathlon", "category": "Snow Sports", "icon": "🔫", "done": false}, {"id": 121, "activity": "Stretching", "category": "Quick Recovery", "icon": "🤸", "done": false}, {"id": 122, "activity": "Meditation", "category": "Quick Recovery", "icon": "🧘", "done": false}, {"id": 123, "activity": "Ice Bath", "category": "Spa Recovery", "icon": "🧊", "done": false}, {"id": 124, "activity": "Massage Therapy", "category": "Spa Recovery", "icon": "💆", "done": false}, {"id": 125, "activity": "Percussive Massage", "category": "Spa Recovery", "icon": "💆‍♂️", "done": false}, {"id": 126, "activity": "Air Compression", "category": "Spa Recovery", "icon": "🦵", "done": false}, {"id": 127, "activity": "Acupuncture", "category": "Spa Recovery", "icon": "💉", "done": false}, {"id": 128, "activity": "Breathwork", "category": "Quick Recovery", "icon": "🌬️", "done": false}, {"id": 129, "activity": "Bright Light Therapy", "category": "Spa Recovery", "icon": "💡", "done": false}, {"id": 130, "activity": "Chiropractor", "category": "Spa Recovery", "icon": "🦴", "done": false}, {"id": 131, "activity": "Cold Shower", "category": "Quick Recovery", "icon": "🚿", "done": false}, {"id": 132, "activity": "Contrast Therapy", "category": "Spa Recovery", "icon": "🌡️", "done": false}, {"id": 133, "activity": "Dry Sauna", "category": "Spa Recovery", "icon": "🧖", "done": false}, {"id": 134, "activity": "Foam Rolling", "category": "Quick Recovery", "icon": "🧻", "done": false}, {"id": 135, "activity": "Hot Tub", "category": "Quick Recovery", "icon": "♨️", "done": false}, {"id": 136, "activity": "Infrared Sauna", "category": "Spa Recovery", "icon": "🔥", "done": false}, {"id": 137, "activity": "Nap", "category": "Quick Recovery", "icon": "😴", "done": false}, {"id": 138, "activity": "Non-Sleep Deep Rest", "category": "Quick Recovery", "icon": "💤", "done": false}, {"id": 139, "activity": "Other - Recovery", "category": "Quick Recovery", "icon": "➕", "done": false}, {"id": 140, "activity": "Physical Therapy", "category": "Spa Recovery", "icon": "🩹", "done": false}, {"id": 141, "activity": "Red Light Therapy", "category": "Spa Recovery", "icon": "🔴", "done": false}, {"id": 142, "activity": "Restorative Yoga", "category": "Quick Recovery", "icon": "🧘‍♀️", "done": false}, {"id": 143, "activity": "Sleep", "category": "Quick Recovery", "icon": "🌙", "done": false}, {"id": 144, "activity": "Sound Healing", "category": "Spa Recovery", "icon": "🎶", "done": false}, {"id": 145, "activity": "Steam Room", "category": "Spa Recovery", "icon": "🌫️", "done": false}, {"id": 146, "activity": "Vagus Nerve Stimulation", "category": "Quick Recovery", "icon": "🧠", "done": false}, {"id": 147, "activity": "Warm Bath", "category": "Quick Recovery", "icon": "🛁", "done": false}, {"id": 148, "activity": "Cooking", "category": "Life", "icon": "🍳", "done": false}, {"id": 149, "activity": "Cleaning", "category": "Life", "icon": "🧹", "done": false}, {"id": 150, "activity": "Yard Work/Gardening", "category": "Life", "icon": "🌱", "done": false}, {"id": 151, "activity": "Manual Labor", "category": "Life", "icon": "🛠️", "done": false}, {"id": 152, "activity": "Commuting", "category": "Life", "icon": "🚗", "done": false}, {"id": 153, "activity": "Air Travel", "category": "Life", "icon": "✈️", "done": false}, {"id": 154, "activity": "Gaming", "category": "Casual Games", "icon": "🎮", "done": false}, {"id": 155, "activity": "Watching Sports", "category": "Life", "icon": "📺", "done": false}, {"id": 156, "activity": "Coaching", "category": "Side Gigs", "icon": "📋", "done": false}, {"id": 157, "activity": "High Stress Work", "category": "Life", "icon": "😤", "done": false}, {"id": 158, "activity": "Other", "category": "Other", "icon": "🔘", "done": false}, {"id": 159, "activity": "Caddying", "category": "Side Gigs", "icon": "🏌️", "done": false}, {"id": 160, "activity": "Dog Walking", "category": "Life", "icon": "🐕", "done": false}, {"id": 161, "activity": "Stroller Walking", "category": "Family", "icon": "🚶‍♀️", "done": false}, {"id": 162, "activity": "Stroller Jogging", "category": "Family", "icon": "🏃‍♀️", "done": false}, {"id": 163, "activity": "Babywearing", "category": "Family", "icon": "🤱", "done": false}, {"id": 164, "activity": "Toddlerwearing", "category": "Family", "icon": "🧒", "done": false}, {"id": 165, "activity": "Dedicated Parenting", "category": "Family", "icon": "👨‍👩‍👧", "done": false}, {"id": 166, "activity": "Operations - Tactical", "category": "Other", "icon": "🎖️", "done": false}, {"id": 167, "activity": "Operations - Medical", "category": "Other", "icon": "🚑", "done": false}, {"id": 168, "activity": "Operations - Flying", "category": "Other", "icon": "🛩️", "done": false}, {"id": 169, "activity": "Operations - Water", "category": "Other", "icon": "🚤", "done": false}, {"id": 170, "activity": "Bartending", "category": "Side Gigs", "icon": "🍸", "done": false}, {"id": 171, "activity": "Chess", "category": "Casual Games", "icon": "♟️", "done": false}, {"id": 172, "activity": "Cuddling With Child", "category": "Family", "icon": "🤗", "done": false}, {"id": 173, "activity": "Driving", "category": "Life", "icon": "🚗", "done": false}, {"id": 174, "activity": "Firefighting", "category": "Other", "icon": "🚒", "done": false}, {"id": 175, "activity": "Knitting", "category": "Life", "icon": "🧶", "done": false}, {"id": 176, "activity": "Nursing A Baby", "category": "Family", "icon": "🍼", "done": false}, {"id": 177, "activity": "Playing With Child", "category": "Family", "icon": "🧸", "done": false}, {"id": 178, "activity": "Poker", "category": "Casual Games", "icon": "🃏", "done": false}, {"id": 179, "activity": "Pumping", "category": "Family", "icon": "🍼", "done": false}, {"id": 180, "activity": "Snow Shoveling", "category": "Life", "icon": "🌨️", "done": false}, {"id": 181, "activity": "Woodchopping", "category": "Life", "icon": "🪓", "done": false}, {"id": 182, "activity": "Barre", "category": "Group Fitness", "icon": "🩰", "done": false}, {"id": 183, "activity": "Barre3", "category": "Group Fitness", "icon": "🩰", "done": false}, {"id": 184, "activity": "Dance", "category": "Performance", "icon": "💃", "done": false}, {"id": 185, "activity": "Circus Arts", "category": "Extreme Adventure", "icon": "🎪", "done": false}, {"id": 186, "activity": "Gymnastics", "category": "Side Gigs", "icon": "🤸‍♀️", "done": false}, {"id": 187, "activity": "Hot Yoga", "category": "Group Fitness", "icon": "🥵", "done": false}, {"id": 188, "activity": "Jiu Jitsu", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 189, "activity": "Wrestling", "category": "Combat Sports", "icon": "🤼", "done": false}, {"id": 190, "activity": "Parkour", "category": "Extreme Adventure", "icon": "🏃‍♂️", "done": false}, {"id": 191, "activity": "Public Speaking", "category": "Performance", "icon": "🎤", "done": false}, {"id": 192, "activity": "Musical Performance", "category": "Performance", "icon": "🎵", "done": false}, {"id": 193, "activity": "Stage Performance", "category": "Performance", "icon": "🎭", "done": false}, {"id": 194, "activity": "Ballet", "category": "Performance", "icon": "🩰", "done": false}, {"id": 195, "activity": "Breakdancing", "category": "Performance", "icon": "🕺", "done": false}, {"id": 196, "activity": "Cheerleading", "category": "Side Gigs", "icon": "📣", "done": false}, {"id": 197, "activity": "DJ", "category": "Performance", "icon": "🎧", "done": false}, {"id": 198, "activity": "Hot Dog Challenge", "category": "Side Gigs", "icon": "🌭", "done": false}, {"id": 199, "activity": "Judo", "category": "Combat Sports", "icon": "🥋", "done": false}, {"id": 200, "activity": "Skydiving", "category": "Extreme Adventure", "icon": "🪂", "done": false}];
+
+// Category display order
+const CATEGORY_ORDER = ["Everyday Cardio", "Home Gym", "Group Fitness", "Wheels", "Combat Sports", "Racquet Sports", "Casual Games", "Ball Sports", "Niche Sports", "Water Sports", "Snow Sports", "Extreme Adventure", "Performance", "Side Gigs", "Quick Recovery", "Spa Recovery", "Life", "Family", "Other"];
+
+let state = { category: "all", status: "all", sort: "category" };
+
+function getCategories() {
+  const set = new Set(ACTIVITIES.map(a => a.category));
+  return CATEGORY_ORDER.filter(c => set.has(c));
+}
+
+function renderDashboard() {
+  const total = ACTIVITIES.length;
+  const done = ACTIVITIES.filter(a => a.done).length;
+  const pending = total - done;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  document.getElementById('overallPct').textContent = pct + '%';
+  document.getElementById('overallCount').textContent = `${done} / ${total} complete`;
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('pendingCount').textContent = pending;
+
+  const circumference = 251.2;
+  const offset = circumference - (circumference * pct / 100);
+  document.getElementById('ringFg').style.strokeDashoffset = offset;
+
+  const catBars = document.getElementById('catBars');
+  catBars.innerHTML = '';
+  const allCats = getCategories();
+  const incompleteCats = [];
+  const completeCats = [];
+  allCats.forEach(cat => {
+    const items = ACTIVITIES.filter(a => a.category === cat);
+    const catDone = items.filter(a => a.done).length;
+    if (items.length && catDone === items.length) {
+      completeCats.push(cat);
+    } else {
+      incompleteCats.push(cat);
+    }
+  });
+  const orderedCats = incompleteCats.concat(completeCats);
+  orderedCats.forEach(cat => {
+    const items = ACTIVITIES.filter(a => a.category === cat);
+    const catDone = items.filter(a => a.done).length;
+    const catPct = items.length ? Math.round((catDone / items.length) * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'cat-bar-row';
+    row.innerHTML = `
+      <div class="cat-bar-head"><span>${cat}</span><b>${catDone}/${items.length} · ${catPct}%</b></div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${catPct}%"></div></div>
+    `;
+    catBars.appendChild(row);
+  });
+}
+
+function renderSuggested() {
+  const pendingItems = ACTIVITIES.filter(a => !a.done);
+  // Suggestion logic: spread across as many distinct categories as possible
+  const shuffled = [...pendingItems].sort(() => Math.random() - 0.5);
+  const picks = [];
+  const seenCats = new Set();
+  for (const item of shuffled) {
+    if (picks.length >= 3) break;
+    if (!seenCats.has(item.category)) {
+      picks.push(item);
+      seenCats.add(item.category);
+    }
+  }
+  for (const item of shuffled) {
+    if (picks.length >= 3) break;
+    if (!picks.includes(item)) picks.push(item);
+  }
+
+  const row = document.getElementById('suggestRow');
+  row.innerHTML = '';
+  if (picks.length === 0) {
+    row.innerHTML = `<div class="suggest-card"><div class="suggest-name">🎉 All done!</div></div>`;
+    return;
+  }
+  picks.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'suggest-card';
+    card.innerHTML = `
+      <div class="suggest-icon">${p.icon}</div>
+      <div class="suggest-name">${p.activity}</div>
+      <div class="suggest-cat">${p.category}</div>
+    `;
+    row.appendChild(card);
+  });
+}
+
+function getFilteredItems() {
+  let items = [...ACTIVITIES];
+  if (state.category !== 'all') items = items.filter(a => a.category === state.category);
+  if (state.status === 'done') items = items.filter(a => a.done);
+  if (state.status === 'pending') items = items.filter(a => !a.done);
+  return items;
+}
+
+function pickRandom() {
+  // Random pick respects the currently active filters (category/status), always from pending within that scope
+  const scoped = getFilteredItems().filter(a => !a.done);
+  if (scoped.length === 0) {
+    document.getElementById('randomName').innerHTML = '🎉 All done!';
+    document.getElementById('randomCat').textContent = '';
+    return;
+  }
+  const pick = scoped[Math.floor(Math.random() * scoped.length)];
+  document.getElementById('randomName').innerHTML = `<span class="random-pick-icon">${pick.icon}</span>${pick.activity}`;
+  document.getElementById('randomCat').textContent = pick.category;
+}
+
+function renderChips() {
+  const catWrap = document.getElementById('categoryChips');
+  catWrap.innerHTML = '<div class="chip active" data-cat="all">All</div>' +
+    getCategories().map(c => `<div class="chip" data-cat="${c}">${c}</div>`).join('');
+
+  catWrap.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      catWrap.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.category = chip.dataset.cat;
+      renderBento();
+      pickRandom();
+    });
+  });
+
+  document.getElementById('statusChips').querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.status = chip.dataset.status;
+      renderBento();
+      pickRandom();
+    });
+  });
+
+  document.getElementById('sortChips').querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.sort = chip.dataset.sort;
+      renderBento();
+    });
+  });
+}
+
+function renderBento() {
+  let items = getFilteredItems();
+
+  const grid = document.getElementById('bentoGrid');
+  const empty = document.getElementById('emptyState');
+  grid.innerHTML = '';
+
+  if (items.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  if (state.sort === 'alpha') {
+    // Alphabetical: no category grouping, flat sorted list
+    items.sort((a, b) => a.activity.localeCompare(b.activity));
+    items.forEach(item => grid.appendChild(buildBentoCard(item)));
+    return;
+  }
+
+  // By category: grouped sections with headers
+  const cats = getCategories().filter(c => items.some(i => i.category === c));
+  cats.forEach(cat => {
+    const catItems = items.filter(i => i.category === cat).sort((a, b) => a.activity.localeCompare(b.activity));
+    const doneCount = catItems.filter(i => i.done).length;
+
+    const header = document.createElement('div');
+    header.className = 'category-section';
+    header.innerHTML = `
+      <div class="category-section-title">${cat}</div>
+      <div class="category-section-count">${doneCount}/${catItems.length}</div>
+    `;
+    grid.appendChild(header);
+
+    catItems.forEach(item => grid.appendChild(buildBentoCard(item)));
+  });
+}
+
+function isActivityPlanned(id) {
+  for (const dateKey in scheduleData) {
+    const entries = scheduleData[dateKey];
+    if (Array.isArray(entries) && entries.some(e => e && e.id === id)) return true;
+  }
+  return false;
+}
+
+function buildBentoCard(item) {
+  const card = document.createElement('div');
+  card.className = 'bento-card' + (item.done ? ' done' : '');
+  card.dataset.id = item.id;
+  const plannedBadge = isActivityPlanned(item.id) ? '<div class="bento-planned-badge">📅 Planned</div>' : '';
+  card.innerHTML = `
+    <div class="bento-status-dot"></div>
+    <div class="bento-icon">${item.icon}</div>
+    <div class="bento-name">${item.activity}</div>
+    ${plannedBadge}
+  `;
+  card.addEventListener('click', () => toggleActivity(item.id));
+  return card;
+}
+
+const STORAGE_KEY = 'activityTrackerState_v1';
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    ACTIVITIES.forEach(a => {
+      if (Object.prototype.hasOwnProperty.call(saved, a.id)) {
+        a.done = !!saved[a.id];
+      }
+    });
+  } catch (e) { /* ignore corrupt storage */ }
+}
+
+function saveState() {
+  const map = {};
+  ACTIVITIES.forEach(a => { map[a.id] = a.done; });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+function toggleActivity(id) {
+  const item = ACTIVITIES.find(a => a.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  saveState();
+  renderDashboard();
+  renderSuggested();
+  renderBento();
+  pickRandom();
+  showToast(item.done ? `✅ Marked "${item.activity}" complete` : `↺ Marked "${item.activity}" pending`);
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!confirm('Reset ALL activities to pending? This clears your saved progress in this browser.')) return;
+  ACTIVITIES.forEach(a => { a.done = false; });
+  saveState();
+  renderDashboard();
+  renderSuggested();
+  renderBento();
+  pickRandom();
+  showToast('↺ All activities reset to pending');
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const html = buildStaticExport();
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'activity-tracker.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('⬇️ Exported activity-tracker.html — upload it to replace the public file');
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function buildStaticExport() {
+  const total = ACTIVITIES.length;
+  const doneCount = ACTIVITIES.filter(a => a.done).length;
+  const pendingCount = total - doneCount;
+  const pct = total ? Math.round((doneCount / total) * 100) : 0;
+  const circumference = 251.2;
+  const ringOffset = circumference - (circumference * pct / 100);
+
+  const cats = getCategories();
+
+  // Category bars
+  const dashCatsIncomplete = [];
+  const dashCatsComplete = [];
+  cats.forEach(cat => {
+    const items = ACTIVITIES.filter(a => a.category === cat);
+    const cDone = items.filter(a => a.done).length;
+    if (items.length && cDone === items.length) {
+      dashCatsComplete.push(cat);
+    } else {
+      dashCatsIncomplete.push(cat);
+    }
+  });
+  const dashCatsOrdered = dashCatsIncomplete.concat(dashCatsComplete);
+  const catBarsHtml = dashCatsOrdered.map(cat => {
+    const items = ACTIVITIES.filter(a => a.category === cat);
+    const cDone = items.filter(a => a.done).length;
+    const cPct = items.length ? Math.round((cDone / items.length) * 100) : 0;
+    return `
+      <div class="cat-bar-row">
+        <div class="cat-bar-head"><span>${escapeHtml(cat)}</span><b>${cDone}/${items.length} · ${cPct}%</b></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${cPct}%"></div></div>
+      </div>`;
+  }).join('');
+
+  // Suggested next (same selection logic as renderSuggested, deterministic for export)
+  const pendingItems = ACTIVITIES.filter(a => !a.done);
+  const picks = [];
+  const seenCats = new Set();
+  for (const item of pendingItems) {
+    if (picks.length >= 3) break;
+    if (!seenCats.has(item.category)) { picks.push(item); seenCats.add(item.category); }
+  }
+  for (const item of pendingItems) {
+    if (picks.length >= 3) break;
+    if (!picks.includes(item)) picks.push(item);
+  }
+  const suggestHtml = picks.length
+    ? picks.map(p => `
+      <div class="suggest-card">
+        <div class="suggest-icon">${p.icon}</div>
+        <div class="suggest-name">${escapeHtml(p.activity)}</div>
+        <div class="suggest-cat">${escapeHtml(p.category)}</div>
+      </div>`).join('')
+    : '<div class="suggest-card"><div class="suggest-name">🎉 All done!</div></div>';
+
+  // Random pick snapshot (first pending item, deterministic for export)
+  let randomNameHtml = '🎉 All done!';
+  let randomCatText = '';
+  if (pendingItems.length) {
+    const rp = pendingItems[0];
+    randomNameHtml = `<span class="random-pick-icon">${rp.icon}</span>${escapeHtml(rp.activity)}`;
+    randomCatText = escapeHtml(rp.category);
+  }
+
+  // Category chips
+  const chipsHtml = '<div class="chip active" data-cat="all">All</div>' +
+    cats.map(c => `<div class="chip" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</div>`).join('');
+
+  // Bento grid, grouped by category (default sort), alphabetical within category
+  const bentoParts = [];
+  cats.forEach(cat => {
+    const catItems = ACTIVITIES.filter(a => a.category === cat).sort((a, b) => a.activity.localeCompare(b.activity));
+    const cDone = catItems.filter(a => a.done).length;
+    bentoParts.push(`
+    <div class="category-section">
+      <div class="category-section-title">${escapeHtml(cat)}</div>
+      <div class="category-section-count">${cDone}/${catItems.length}</div>
+    </div>`);
+    catItems.forEach(item => {
+      const plannedBadge = isActivityPlanned(item.id) ? '<div class="bento-planned-badge">📅 Planned</div>' : '';
+      bentoParts.push(`
+    <div class="bento-card${item.done ? ' done' : ''}" data-id="${item.id}">
+      <div class="bento-status-dot"></div>
+      <div class="bento-icon">${item.icon}</div>
+      <div class="bento-name">${escapeHtml(item.activity)}</div>
+      ${plannedBadge}
+    </div>`);
+    });
+  });
+  const bentoHtml = bentoParts.join('');
+
+  let html = PUBLIC_TEMPLATE;
+  html = html.replace('__ACTIVITIES_JSON__', JSON.stringify(ACTIVITIES));
+  html = html.replace('__RING_OFFSET__', String(ringOffset));
+  html = html.replace('__OVERALL_PCT__', pct + '%');
+  html = html.replace('__OVERALL_COUNT__', `${doneCount} / ${total} complete`);
+  html = html.replace('__DONE_COUNT__', String(doneCount));
+  html = html.replace('__PENDING_COUNT__', String(pendingCount));
+  html = html.replace('__CAT_BARS__', catBarsHtml);
+  html = html.replace('__SUGGEST_ROW__', suggestHtml);
+  html = html.replace('__RANDOM_NAME__', randomNameHtml);
+  html = html.replace('__RANDOM_CAT__', randomCatText);
+  html = html.replace('__CATEGORY_CHIPS__', chipsHtml);
+  html = html.replace('__BENTO_GRID__', bentoHtml);
+
+  const schedParts = buildScheduleExportParts();
+  html = html.replace('__SCHED_DATE_DISPLAY__', schedParts.dateDisplayHtml);
+  html = html.replace('__SCHED_WEEKS_HTML__', schedParts.weeksHtml);
+  html = html.replace('__SCHEDULE_START__', schedParts.startStr);
+  html = html.replace('__SCHEDULE_JSON__', schedParts.dataJson);
+  html = html.replace('__SCHED_COUNTER__', schedParts.counterText);
+
+  return html;
+}
+
+document.getElementById('shuffleBtn').addEventListener('click', pickRandom);
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- Scheduling (editable) ----------
+const SCHED_STORAGE_KEY = 'activityTrackerSchedule_v1';
+const SLOT_ORDER = ['AM', 'PM', 'Night'];
+let scheduleStart = '';
+let scheduleData = {};
+
+function loadSchedule() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SCHED_STORAGE_KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+      scheduleStart = saved.start || '';
+      scheduleData = migrateScheduleData(saved.data || {});
+    }
+  } catch (e) { /* ignore corrupt storage */ }
+}
+
+// Older versions of this app stored each day as { AM: [...], PM: [...], Night: [...] }.
+// The current format stores each day as a flat array [{ id, tag }, ...].
+// This converts any old-shaped data found in localStorage so it doesn't crash rendering.
+function migrateScheduleData(data) {
+  const migrated = {};
+  Object.keys(data).forEach(dateKey => {
+    const value = data[dateKey];
+    if (Array.isArray(value)) {
+      // Already in the current flat-array format.
+      migrated[dateKey] = value.filter(e => e && typeof e === 'object' && 'id' in e);
+    } else if (value && typeof value === 'object') {
+      // Old per-slot object format: { AM: [ids], PM: [ids], Night: [ids] }
+      const flat = [];
+      ['AM', 'PM', 'Night'].forEach(slot => {
+        const ids = value[slot];
+        if (Array.isArray(ids)) {
+          ids.forEach(id => flat.push({ id, tag: slot }));
+        }
+      });
+      migrated[dateKey] = flat;
+    }
+  });
+  return migrated;
+}
+
+function saveSchedule() {
+  localStorage.setItem(SCHED_STORAGE_KEY, JSON.stringify({ start: scheduleStart, data: scheduleData }));
+}
+
+function findActivityById(id) {
+  return ACTIVITIES.find(a => a.id === id);
+}
+
+function formatDateLabel(d) {
+  return d.toLocaleDateString(undefined, { weekday: 'long' });
+}
+function formatDateShort(d) {
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function getActivityStatusBadge(act) {
+  if (act.done) return '<span class="sched-combo-status done">Done</span>';
+  if (isActivityPlanned(act.id)) return '<span class="sched-combo-status planned">Planned</span>';
+  return '';
+}
+
+function buildComboListHtml(filterText) {
+  const term = (filterText || '').trim().toLowerCase();
+  const matches = ACTIVITIES.filter(a => !term || a.activity.toLowerCase().includes(term));
+  if (matches.length === 0) {
+    return '<div class="sched-combo-empty">No matching activities</div>';
+  }
+  matches.sort((a, b) => a.category.localeCompare(b.category) || a.activity.localeCompare(b.activity));
+  let lastCat = null;
+  let html = '';
+  matches.forEach(a => {
+    if (a.category !== lastCat) {
+      html += `<div class="sched-combo-group-label">${a.category}</div>`;
+      lastCat = a.category;
+    }
+    html += `<div class="sched-combo-opt" data-id="${a.id}">
+      <span>${a.icon}</span>
+      <span class="sched-combo-opt-name">${a.activity}</span>
+      ${getActivityStatusBadge(a)}
+    </div>`;
+  });
+  return html;
+}
+
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const TAG_OPTIONS = ['AM', 'PM', 'Night'];
+
+function closeAllComboLists() {
+  document.querySelectorAll('.sched-combo-list.open').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.sched-tag-menu').forEach(el => el.remove());
+}
+
+function renderScheduleEditable() {
+  const weeksContainer = document.getElementById('schedWeeks');
+  const startInput = document.getElementById('schedStartDate');
+  const counterEl = document.getElementById('schedCounter');
+  if (!weeksContainer) return;
+
+  if (startInput && startInput.value !== scheduleStart) {
+    startInput.value = scheduleStart;
+  }
+
+  if (!scheduleStart) {
+    if (counterEl) counterEl.textContent = '0 activities planned';
+    weeksContainer.innerHTML = '<div class="empty-state">Pick a start date above to begin scheduling.</div>';
+    return;
+  }
+
+  const startDate = new Date(scheduleStart + 'T00:00:00');
+  weeksContainer.innerHTML = '';
+
+  // Anchor the grid to the Sunday on/before the chosen start date, so every row is a full Sun–Sat week.
+  const gridAnchor = new Date(startDate);
+  gridAnchor.setDate(gridAnchor.getDate() - gridAnchor.getDay());
+
+  // If the start date isn't a Sunday, the partial lead-in days push a 5th row to cover the full 4 weeks from start.
+  const numWeeks = gridAnchor.getTime() === startDate.getTime() ? 4 : 5;
+
+  const headRow = document.createElement('div');
+  headRow.className = 'sched-weekday-row';
+  headRow.innerHTML = WEEKDAY_LABELS.map(l => `<div class="sched-weekday-head">${l}</div>`).join('');
+  weeksContainer.appendChild(headRow);
+
+  let totalPlanned = 0;
+
+  for (let week = 0; week < numWeeks; week++) {
+    const weekRow = document.createElement('div');
+    weekRow.className = 'sched-week-row';
+
+    for (let d = 0; d < 7; d++) {
+      const dayIndex = week * 7 + d;
+      const dayDate = new Date(gridAnchor);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      const dateKey = dayDate.toISOString().slice(0, 10);
+      const isOutside = dayDate < startDate;
+
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'sched-day' + (isOutside ? ' outside' : '');
+
+      const entries = scheduleData[dateKey] || [];
+      totalPlanned += entries.length;
+      let entriesHtml = '';
+      if (entries.length === 0) {
+        entriesHtml = '<div class="sched-empty-slot">Nothing planned</div>';
+      } else {
+        entriesHtml = entries.map((entry, idx) => {
+          const act = findActivityById(entry.id);
+          if (!act) return '';
+          const tagHtml = entry.tag
+            ? `<span class="sched-entry-tag" data-date="${dateKey}" data-idx="${idx}">${entry.tag}</span>`
+            : `<span class="sched-entry-tag untagged" data-date="${dateKey}" data-idx="${idx}">+ Tag</span>`;
+          return `<div class="sched-entry" data-date="${dateKey}" data-idx="${idx}">
+            <span class="sched-entry-icon">${act.icon}</span>
+            <span class="sched-entry-name">${act.activity}</span>
+            ${tagHtml}
+            <span class="sched-entry-remove" data-remove>&times;</span>
+          </div>`;
+        }).join('');
+      }
+
+      dayDiv.innerHTML = `
+        <div class="sched-day-head">
+          <div class="sched-day-name">${formatDateLabel(dayDate)}</div>
+          <div class="sched-day-date">${formatDateShort(dayDate)}</div>
+        </div>
+        ${entriesHtml}
+        <div class="sched-add-row">
+          <div class="sched-combo" data-date="${dateKey}">
+            <input type="text" class="sched-combo-input" placeholder="+ Add activity…" autocomplete="off">
+            <div class="sched-combo-list"></div>
+          </div>
+        </div>
+      `;
+      weekRow.appendChild(dayDiv);
+    }
+    weeksContainer.appendChild(weekRow);
+  }
+
+  if (counterEl) {
+    counterEl.textContent = `${totalPlanned} ${totalPlanned === 1 ? 'activity' : 'activities'} planned`;
+  }
+
+  // ---- Combo box: open/filter/select ----
+  weeksContainer.querySelectorAll('.sched-combo').forEach(combo => {
+    const input = combo.querySelector('.sched-combo-input');
+    const list = combo.querySelector('.sched-combo-list');
+    const dateKey = combo.dataset.date;
+
+    const openList = () => {
+      closeAllComboLists();
+      list.innerHTML = buildComboListHtml(input.value);
+      list.classList.add('open');
+      wireComboOptions();
+    };
+
+    const wireComboOptions = () => {
+      list.querySelectorAll('.sched-combo-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+          const id = parseInt(opt.dataset.id, 10);
+          if (!scheduleData[dateKey]) scheduleData[dateKey] = [];
+          scheduleData[dateKey].push({ id, tag: '' });
+          saveSchedule();
+          renderScheduleEditable();
+          renderDashboard();
+          renderBento();
+          const act = findActivityById(id);
+          showToast(`Added "${act.activity}"`);
+        });
+      });
+    };
+
+    input.addEventListener('focus', openList);
+    input.addEventListener('input', openList);
+  });
+
+  // ---- Tag badge: click to open AM/PM/Night menu ----
+  weeksContainer.querySelectorAll('.sched-entry-tag').forEach(tagEl => {
+    tagEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllComboLists();
+      const dateKey = tagEl.dataset.date;
+      const idx = parseInt(tagEl.dataset.idx, 10);
+      const menu = document.createElement('div');
+      menu.className = 'sched-tag-menu';
+      menu.innerHTML = TAG_OPTIONS.map(t => `<div class="sched-tag-menu-opt" data-tag="${t}">${t}</div>`).join('')
+        + '<div class="sched-tag-menu-opt" data-tag="">Clear</div>';
+      document.body.appendChild(menu);
+      const rect = tagEl.getBoundingClientRect();
+      menu.style.top = (window.scrollY + rect.bottom + 4) + 'px';
+      menu.style.left = (window.scrollX + rect.left) + 'px';
+      menu.querySelectorAll('.sched-tag-menu-opt').forEach(opt => {
+        opt.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const tag = opt.dataset.tag;
+          if (scheduleData[dateKey] && scheduleData[dateKey][idx]) {
+            scheduleData[dateKey][idx].tag = tag;
+            saveSchedule();
+            renderScheduleEditable();
+          }
+        });
+      });
+    });
+  });
+
+  weeksContainer.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const entryDiv = btn.closest('.sched-entry');
+      const dateKey = entryDiv.dataset.date;
+      const idx = parseInt(entryDiv.dataset.idx, 10);
+      if (scheduleData[dateKey]) {
+        scheduleData[dateKey].splice(idx, 1);
+        if (scheduleData[dateKey].length === 0) delete scheduleData[dateKey];
+      }
+      saveSchedule();
+      renderScheduleEditable();
+      renderDashboard();
+      renderBento();
+      showToast('Removed from schedule');
+    });
+  });
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.sched-combo') && !e.target.closest('.sched-tag-menu') && !e.target.closest('.sched-entry-tag')) {
+    closeAllComboLists();
+  }
+});
+
+const schedStartInputEl = document.getElementById('schedStartDate');
+if (schedStartInputEl) {
+  schedStartInputEl.addEventListener('change', () => {
+    scheduleStart = schedStartInputEl.value;
+    saveSchedule();
+    renderScheduleEditable();
+  });
+}
+
+function buildScheduleExportParts() {
+  if (!scheduleStart) {
+    return {
+      dateDisplayHtml: '\u2014',
+      weeksHtml: '<div class="empty-state">No schedule has been set up yet.</div>',
+      startStr: '',
+      dataJson: '{}',
+      counterText: '0 activities planned'
+    };
+  }
+  const startDate = new Date(scheduleStart + 'T00:00:00');
+  const dateDisplayHtml = startDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Anchor the grid to the Sunday on/before the chosen start date, so every row is a full Sun–Sat week.
+  const gridAnchor = new Date(startDate);
+  gridAnchor.setDate(gridAnchor.getDate() - gridAnchor.getDay());
+
+  // If the start date isn't a Sunday, the partial lead-in days push a 5th row to cover the full 4 weeks from start.
+  const numWeeks = gridAnchor.getTime() === startDate.getTime() ? 4 : 5;
+
+  let totalPlanned = 0;
+  let weeksHtml = '<div class="sched-weekday-row">' + WEEKDAY_LABELS.map(l => `<div class="sched-weekday-head">${l}</div>`).join('') + '</div>';
+  for (let week = 0; week < numWeeks; week++) {
+    weeksHtml += '<div class="sched-week-row">';
+    for (let d = 0; d < 7; d++) {
+      const dayIndex = week * 7 + d;
+      const dayDate = new Date(gridAnchor);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      const dateKey = dayDate.toISOString().slice(0, 10);
+      const isOutside = dayDate < startDate;
+
+      const entries = scheduleData[dateKey] || [];
+      totalPlanned += entries.length;
+      let entriesHtml = '';
+      if (entries.length === 0) {
+        entriesHtml = '<div class="sched-empty-slot">Nothing planned</div>';
+      } else {
+        entriesHtml = entries.map(entry => {
+          const act = findActivityById(entry.id);
+          if (!act) return '';
+          const tagHtml = entry.tag ? `<span class="sched-entry-tag">${escapeHtml(entry.tag)}</span>` : '';
+          return `<div class="sched-entry"><span class="sched-entry-icon">${act.icon}</span><span class="sched-entry-name">${escapeHtml(act.activity)}</span>${tagHtml}</div>`;
+        }).join('');
+      }
+
+      weeksHtml += `
+        <div class="sched-day${isOutside ? ' outside' : ''}">
+          <div class="sched-day-head">
+            <div class="sched-day-name">${formatDateLabel(dayDate)}</div>
+            <div class="sched-day-date">${formatDateShort(dayDate)}</div>
+          </div>
+          ${entriesHtml}
+        </div>`;
+    }
+    weeksHtml += '</div>';
+  }
+
+  return {
+    dateDisplayHtml,
+    weeksHtml,
+    startStr: scheduleStart,
+    dataJson: JSON.stringify(scheduleData),
+    counterText: `${totalPlanned} ${totalPlanned === 1 ? 'activity' : 'activities'} planned`
+  };
+}
+
+loadSchedule();
+renderScheduleEditable();
+
+
+const PUBLIC_TEMPLATE_B64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CjxtZXRhIGNoYXJzZXQ9IlVURi04Ij4KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiPgo8dGl0bGU+QWN0aXZpdHkgVHJhY2tlcjwvdGl0bGU+CjxzdHlsZT4KICA6cm9vdCB7CiAgICAtLWJnOiAjMGIwZDEyOwogICAgLS1wYW5lbDogIzE1MTgyMzsKICAgIC0tcGFuZWwyOiAjMWMyMDMwOwogICAgLS1ib3JkZXI6ICMyYTJmNDI7CiAgICAtLXRleHQ6ICNlOGVhZjA7CiAgICAtLW11dGVkOiAjOGI5MGEzOwogICAgLS1hY2NlbnQ6ICM1ZWM4ZmY7CiAgICAtLWFjY2VudDI6ICM3YWYwYzI7CiAgICAtLXdhcm46ICNmZmNmNWU7CiAgICAtLWRvbmU6ICM1OGQzOGE7CiAgICAtLXBlbmRpbmc6ICNmZjhhOGE7CiAgICAtLXJhZGl1czogMTRweDsKICB9CiAgKiB7IGJveC1zaXppbmc6IGJvcmRlci1ib3g7IH0KICBib2R5IHsKICAgIG1hcmdpbjogMDsKICAgIGJhY2tncm91bmQ6IHZhcigtLWJnKTsKICAgIGNvbG9yOiB2YXIoLS10ZXh0KTsKICAgIGZvbnQtZmFtaWx5OiAtYXBwbGUtc3lzdGVtLCBCbGlua01hY1N5c3RlbUZvbnQsICJTRiBQcm8gVGV4dCIsIFNlZ29lIFVJLCBSb2JvdG8sIHNhbnMtc2VyaWY7CiAgICBwYWRkaW5nOiAxMnB4OwogICAgcGFkZGluZy1ib3R0b206IDYwcHg7CiAgfQogIGgxIHsKICAgIGZvbnQtc2l6ZTogMS4zcmVtOwogICAgbWFyZ2luOiA0cHggMCAxNHB4OwogICAgdGV4dC1hbGlnbjogY2VudGVyOwogICAgbGV0dGVyLXNwYWNpbmc6IDAuMnB4OwogIH0KICBoMi5zZWN0aW9uLXRpdGxlIHsKICAgIGZvbnQtc2l6ZTogMC45NXJlbTsKICAgIHRleHQtdHJhbnNmb3JtOiB1cHBlcmNhc2U7CiAgICBsZXR0ZXItc3BhY2luZzogMC4wOGVtOwogICAgY29sb3I6IHZhcigtLW11dGVkKTsKICAgIG1hcmdpbjogMjJweCA0cHggMTBweDsKICB9CgogIC5kYXNoLWdyaWQgewogICAgZGlzcGxheTogZ3JpZDsKICAgIGdyaWQtdGVtcGxhdGUtY29sdW1uczogcmVwZWF0KDIsIDFmcik7CiAgICBnYXA6IDEwcHg7CiAgfQogIC5zdGF0LWNhcmQgewogICAgYmFja2dyb3VuZDogdmFyKC0tcGFuZWwpOwogICAgYm9yZGVyOiAxcHggc29saWQgdmFyKC0tYm9yZGVyKTsKICAgIGJvcmRlci1yYWRpdXM6IHZhcigtLXJhZGl1cyk7CiAgICBwYWRkaW5nOiAxMnB4OwogICAgdGV4dC1hbGlnbjogY2VudGVyOwogIH0KICAuc3RhdC1jYXJkLndpZGUgeyBncmlkLWNvbHVtbjogMSAvIC0xOyB9CiAgLnN0YXQtbnVtIHsKICAgIGZvbnQtc2l6ZTogMS42cmVtOwogICAgZm9udC13ZWlnaHQ6IDcwMDsKICB9CiAgLnN0YXQtbGFiZWwgewogICAgZm9udC1zaXplOiAwLjcycmVtOwogICAgY29sb3I6IHZhcigtLW11dGVkKTsKICAgIG1hcmdpbi10b3A6IDJweDsKICAgIHRleHQtdHJhbnNmb3JtOiB1cHBlcmNhc2U7CiAgICBsZXR0ZXItc3BhY2luZzogMC4wNWVtOwogIH0KICAucmluZy13cmFwIHsKICAgIGRpc3BsYXk6IGZsZXg7CiAgICBhbGlnbi1pdGVtczogY2VudGVyOwogICAganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgICBnYXA6IDE0cHg7CiAgfQogIHN2Zy5yaW5nIHsgd2lkdGg6IDg2cHg7IGhlaWdodDogODZweDsgdHJhbnNmb3JtOiByb3RhdGUoLTkwZGVnKTsgfQogIC5yaW5nLWJnIHsgZmlsbDogbm9uZTsgc3Ryb2tlOiB2YXIoLS1ib3JkZXIpOyBzdHJva2Utd2lkdGg6IDEwOyB9CiAgLnJpbmctZmcgeyBmaWxsOiBub25lOyBzdHJva2U6IHZhcigtLWFjY2VudDIpOyBzdHJva2Utd2lkdGg6IDEwOyBzdHJva2UtbGluZWNhcDogcm91bmQ7IHRyYW5zaXRpb246IHN0cm9rZS1kYXNob2Zmc2V0IDAuNnMgZWFzZTsgfQogIC5yaW5nLXBjdCB7IGZvbnQtc2l6ZTogMS41cmVtOyBmb250LXdlaWdodDogNzAwOyB9CgogIC5jYXQtYmFycyB7IGRpc3BsYXk6IGZsZXg7IGZsZXgtZGlyZWN0aW9uOiBjb2x1bW47IGdhcDogMTBweDsgbWFyZ2luLXRvcDogNHB4OyB9CiAgLmNhdC1iYXItaGVhZCB7CiAgICBkaXNwbGF5OiBmbGV4OwogICAganVzdGlmeS1jb250ZW50OiBzcGFjZS1iZXR3ZWVuOwogICAgZm9udC1zaXplOiAwLjc4cmVtOwogICAgbWFyZ2luLWJvdHRvbTogNHB4OwogICAgY29sb3I6IHZhcigtLW11dGVkKTsKICB9CiAgLmNhdC1iYXItaGVhZCBiIHsgY29sb3I6IHZhcigtLXRleHQpOyB9CiAgLmNhdC1iYXItdHJhY2sgewogICAgaGVpZ2h0OiA4cHg7CiAgICBiYWNrZ3JvdW5kOiB2YXIoLS1ib3JkZXIpOwogICAgYm9yZGVyLXJhZGl1czogNnB4OwogICAgb3ZlcmZsb3c6IGhpZGRlbjsKICB9CiAgLmNhdC1iYXItZmlsbCB7CiAgICBoZWlnaHQ6IDEwMCU7CiAgICBiYWNrZ3JvdW5kOiBsaW5lYXItZ3JhZGllbnQoOTBkZWcsIHZhcigtLWFjY2VudCksIHZhcigtLWFjY2VudDIpKTsKICAgIGJvcmRlci1yYWRpdXM6IDZweDsKICAgIHRyYW5zaXRpb246IHdpZHRoIDAuNXMgZWFzZTsKICB9CgogIC5zdWdnZXN0LXJvdyB7CiAgICBkaXNwbGF5OiBncmlkOwogICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoMiwgMWZyKTsKICAgIGdhcDogOHB4OwogICAgbWFyZ2luLWJvdHRvbTogOHB4OwogIH0KICAuc3VnZ2VzdC1jYXJkIHsKICAgIGJhY2tncm91bmQ6IHZhcigtLXBhbmVsMik7CiAgICBib3JkZXI6IDFweCBzb2xpZCB2YXIoLS1ib3JkZXIpOwogICAgYm9yZGVyLXJhZGl1czogMTJweDsKICAgIHBhZGRpbmc6IDEwcHg7CiAgfQogIC5zdWdnZXN0LWljb24geyBmb250LXNpemU6IDEuNHJlbTsgbGluZS1oZWlnaHQ6IDE7IH0KICAuc3VnZ2VzdC1uYW1lIHsgZm9udC1zaXplOiAwLjkycmVtOyBmb250LXdlaWdodDogNjAwOyBtYXJnaW4tdG9wOiA0cHg7IH0KICAuc3VnZ2VzdC1jYXQgeyBmb250LXNpemU6IDAuNzJyZW07IGNvbG9yOiB2YXIoLS1hY2NlbnQpOyBtYXJnaW4tdG9wOiAycHg7IH0KCiAgLnJhbmRvbS1waWNrIHsKICAgIGJhY2tncm91bmQ6IGxpbmVhci1ncmFkaWVudCgxMzVkZWcsICMyYTFmM2QsICMxYTI3NDApOwogICAgYm9yZGVyOiAxcHggc29saWQgIzNjMzU2MDsKICAgIGJvcmRlci1yYWRpdXM6IHZhcigtLXJhZGl1cyk7CiAgICBwYWRkaW5nOiAxNHB4OwogICAgZGlzcGxheTogZmxleDsKICAgIGFsaWduLWl0ZW1zOiBjZW50ZXI7CiAgICBqdXN0aWZ5LWNvbnRlbnQ6IHNwYWNlLWJldHdlZW47CiAgICBnYXA6IDEwcHg7CiAgICBtYXJnaW4tdG9wOiA2cHg7CiAgfQogIC5yYW5kb20tcGljay1sZWZ0IHsgZGlzcGxheTogZmxleDsgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsgZ2FwOiAycHg7IH0KICAucmFuZG9tLXBpY2stbGFiZWwgewogICAgZm9udC1zaXplOiAwLjY4cmVtOwogICAgdGV4dC10cmFuc2Zvcm06IHVwcGVyY2FzZTsKICAgIGxldHRlci1zcGFjaW5nOiAwLjA4ZW07CiAgICBjb2xvcjogdmFyKC0td2Fybik7CiAgfQogIC5yYW5kb20tcGljay1uYW1lIHsgZm9udC1zaXplOiAxLjFyZW07IGZvbnQtd2VpZ2h0OiA3MDA7IGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7IGdhcDogOHB4OyB9CiAgLnJhbmRvbS1waWNrLWljb24geyBmb250LXNpemU6IDEuM3JlbTsgfQogIC5yYW5kb20tcGljay1jYXQgeyBmb250LXNpemU6IDAuNzhyZW07IGNvbG9yOiB2YXIoLS1tdXRlZCk7IH0KICAuc2h1ZmZsZS1idG4gewogICAgYmFja2dyb3VuZDogdmFyKC0tYWNjZW50KTsKICAgIGNvbG9yOiAjMGIwZDEyOwogICAgYm9yZGVyOiBub25lOwogICAgYm9yZGVyLXJhZGl1czogMTBweDsKICAgIHBhZGRpbmc6IDEwcHggMTRweDsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgICBmb250LXNpemU6IDAuODVyZW07CiAgICBjdXJzb3I6IHBvaW50ZXI7CiAgICB3aGl0ZS1zcGFjZTogbm93cmFwOwogICAgZmxleC1zaHJpbms6IDA7CiAgfQogIC5zaHVmZmxlLWJ0bjphY3RpdmUgeyB0cmFuc2Zvcm06IHNjYWxlKDAuOTYpOyB9CgogIC5maWx0ZXItYmxvY2sgeyBtYXJnaW4tdG9wOiAxOHB4OyB9CiAgLmZpbHRlci1ncm91cC1sYWJlbCB7CiAgICBmb250LXNpemU6IDAuNjhyZW07CiAgICBjb2xvcjogdmFyKC0tbXV0ZWQpOwogICAgdGV4dC10cmFuc2Zvcm06IHVwcGVyY2FzZTsKICAgIGxldHRlci1zcGFjaW5nOiAwLjA2ZW07CiAgICBtYXJnaW46IDEwcHggNHB4IDZweDsKICB9CiAgLmNoaXAtcm93IHsgZGlzcGxheTogZmxleDsgZmxleC13cmFwOiB3cmFwOyBnYXA6IDZweDsgfQogIC5jaGlwIHsKICAgIGJhY2tncm91bmQ6IHZhcigtLXBhbmVsKTsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlcik7CiAgICBjb2xvcjogdmFyKC0tbXV0ZWQpOwogICAgYm9yZGVyLXJhZGl1czogOTk5cHg7CiAgICBwYWRkaW5nOiA2cHggMTJweDsKICAgIGZvbnQtc2l6ZTogMC43OHJlbTsKICAgIGN1cnNvcjogcG9pbnRlcjsKICAgIHVzZXItc2VsZWN0OiBub25lOwogIH0KICAuY2hpcC5hY3RpdmUgewogICAgYmFja2dyb3VuZDogdmFyKC0tYWNjZW50KTsKICAgIGNvbG9yOiAjMGIwZDEyOwogICAgYm9yZGVyLWNvbG9yOiB2YXIoLS1hY2NlbnQpOwogICAgZm9udC13ZWlnaHQ6IDYwMDsKICB9CgogIC5iZW50by1ncmlkIHsKICAgIGRpc3BsYXk6IGdyaWQ7CiAgICBncmlkLXRlbXBsYXRlLWNvbHVtbnM6IHJlcGVhdCgyLCAxZnIpOwogICAgZ2FwOiA4cHg7CiAgICBtYXJnaW4tdG9wOiAxMnB4OwogIH0KICAuYmVudG8tY2FyZCB7CiAgICBiYWNrZ3JvdW5kOiB2YXIoLS1wYW5lbCk7CiAgICBib3JkZXI6IDFweCBzb2xpZCB2YXIoLS1ib3JkZXIpOwogICAgYm9yZGVyLXJhZGl1czogMTJweDsKICAgIHBhZGRpbmc6IDEwcHg7CiAgICBkaXNwbGF5OiBmbGV4OwogICAgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICAgIGdhcDogNnB4OwogICAgbWluLWhlaWdodDogNzRweDsKICAgIHBvc2l0aW9uOiByZWxhdGl2ZTsKICB9CiAgLmJlbnRvLWNhcmQuZG9uZSB7CiAgICBib3JkZXItY29sb3I6IHJnYmEoODgsIDIxMSwgMTM4LCAwLjQpOwogICAgYmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KDE0NWRlZywgcmdiYSg4OCwyMTEsMTM4LDAuMDgpLCB2YXIoLS1wYW5lbCkpOwogIH0KICAuYmVudG8taWNvbiB7IGZvbnQtc2l6ZTogMS42cmVtOyBsaW5lLWhlaWdodDogMTsgfQogIC5iZW50by1zdGF0dXMtZG90IHsKICAgIHBvc2l0aW9uOiBhYnNvbHV0ZTsKICAgIHRvcDogMTBweDsKICAgIHJpZ2h0OiAxMHB4OwogICAgd2lkdGg6IDlweDsKICAgIGhlaWdodDogOXB4OwogICAgYm9yZGVyLXJhZGl1czogNTAlOwogICAgYmFja2dyb3VuZDogdmFyKC0tcGVuZGluZyk7CiAgfQogIC5iZW50by1jYXJkLmRvbmUgLmJlbnRvLXN0YXR1cy1kb3QgeyBiYWNrZ3JvdW5kOiB2YXIoLS1kb25lKTsgfQogIC5iZW50by1uYW1lIHsKICAgIGZvbnQtc2l6ZTogMC44NXJlbTsKICAgIGZvbnQtd2VpZ2h0OiA2MDA7CiAgICBsaW5lLWhlaWdodDogMS4yNTsKICAgIHBhZGRpbmctcmlnaHQ6IDE0cHg7CiAgfQogIC5iZW50by1jYXQgeyBkaXNwbGF5OiBub25lOyB9CiAgLmJlbnRvLXBsYW5uZWQtYmFkZ2UgewogICAgZm9udC1zaXplOiAwLjZyZW07CiAgICBmb250LXdlaWdodDogNzAwOwogICAgdGV4dC10cmFuc2Zvcm06IHVwcGVyY2FzZTsKICAgIGxldHRlci1zcGFjaW5nOiAwLjA0ZW07CiAgICBjb2xvcjogdmFyKC0td2Fybik7CiAgICBiYWNrZ3JvdW5kOiByZ2JhKDI1NSwgMjA3LCA5NCwgMC4xMik7CiAgICBib3JkZXI6IDFweCBzb2xpZCByZ2JhKDI1NSwgMjA3LCA5NCwgMC4zNSk7CiAgICBib3JkZXItcmFkaXVzOiA2cHg7CiAgICBwYWRkaW5nOiAycHggNnB4OwogICAgbWFyZ2luLXRvcDogYXV0bzsKICAgIGFsaWduLXNlbGY6IGZsZXgtc3RhcnQ7CiAgfQoKICAuY2F0ZWdvcnktc2VjdGlvbiB7CiAgICBncmlkLWNvbHVtbjogMSAvIC0xOwogICAgbWFyZ2luLXRvcDogMTZweDsKICAgIGRpc3BsYXk6IGZsZXg7CiAgICBhbGlnbi1pdGVtczogY2VudGVyOwogICAganVzdGlmeS1jb250ZW50OiBzcGFjZS1iZXR3ZWVuOwogICAgcGFkZGluZzogMCAycHg7CiAgfQogIC5jYXRlZ29yeS1zZWN0aW9uOmZpcnN0LWNoaWxkIHsgbWFyZ2luLXRvcDogNHB4OyB9CiAgLmNhdGVnb3J5LXNlY3Rpb24tdGl0bGUgewogICAgZm9udC1zaXplOiAwLjgycmVtOwogICAgZm9udC13ZWlnaHQ6IDcwMDsKICAgIGNvbG9yOiB2YXIoLS10ZXh0KTsKICAgIGRpc3BsYXk6IGZsZXg7CiAgICBhbGlnbi1pdGVtczogY2VudGVyOwogICAgZ2FwOiA2cHg7CiAgfQogIC5jYXRlZ29yeS1zZWN0aW9uLWNvdW50IHsgZm9udC1zaXplOiAwLjdyZW07IGNvbG9yOiB2YXIoLS1tdXRlZCk7IH0KCiAgLmVtcHR5LXN0YXRlIHsKICAgIHRleHQtYWxpZ246IGNlbnRlcjsKICAgIGNvbG9yOiB2YXIoLS1tdXRlZCk7CiAgICBwYWRkaW5nOiAzMHB4IDEwcHg7CiAgICBmb250LXNpemU6IDAuODVyZW07CiAgfQoKICBmb290ZXIgewogICAgdGV4dC1hbGlnbjogY2VudGVyOwogICAgY29sb3I6IHZhcigtLW11dGVkKTsKICAgIGZvbnQtc2l6ZTogMC42OHJlbTsKICAgIG1hcmdpbi10b3A6IDMwcHg7CiAgICBvcGFjaXR5OiAwLjY7CiAgfQoKICBAbWVkaWEgKG1pbi13aWR0aDogNDgwcHgpIHsKICAgIC5iZW50by1ncmlkIHsgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoMywgMWZyKTsgfQogICAgLnN1Z2dlc3Qtcm93IHsgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoMywgMWZyKTsgfQogIH0KCiAgLyogLS0tLS0tLS0tLSBUYWJzIC0tLS0tLS0tLS0gKi8KICAudGFiLXJvdyB7CiAgICBkaXNwbGF5OiBmbGV4OwogICAgZ2FwOiA2cHg7CiAgICBtYXJnaW4tYm90dG9tOiAxNnB4OwogICAgYmFja2dyb3VuZDogdmFyKC0tcGFuZWwpOwogICAgYm9yZGVyOiAxcHggc29saWQgdmFyKC0tYm9yZGVyKTsKICAgIGJvcmRlci1yYWRpdXM6IDEycHg7CiAgICBwYWRkaW5nOiA0cHg7CiAgfQogIC50YWItYnRuIHsKICAgIGZsZXg6IDE7CiAgICB0ZXh0LWFsaWduOiBjZW50ZXI7CiAgICBwYWRkaW5nOiA5cHggOHB4OwogICAgYm9yZGVyLXJhZGl1czogOXB4OwogICAgZm9udC1zaXplOiAwLjgycmVtOwogICAgZm9udC13ZWlnaHQ6IDYwMDsKICAgIGNvbG9yOiB2YXIoLS1tdXRlZCk7CiAgICBjdXJzb3I6IHBvaW50ZXI7CiAgICB1c2VyLXNlbGVjdDogbm9uZTsKICB9CiAgLnRhYi1idG4uYWN0aXZlIHsKICAgIGJhY2tncm91bmQ6IHZhcigtLWFjY2VudCk7CiAgICBjb2xvcjogIzBiMGQxMjsKICB9CiAgLnRhYi1wYW5lbCB7IGRpc3BsYXk6IG5vbmU7IH0KICAudGFiLXBhbmVsLmFjdGl2ZSB7IGRpc3BsYXk6IGJsb2NrOyB9CgogIC8qIC0tLS0tLS0tLS0gU2NoZWR1bGluZyAtLS0tLS0tLS0tICovCiAgLnNjaGVkLXRvb2xiYXIgewogICAgZGlzcGxheTogZmxleDsKICAgIGFsaWduLWl0ZW1zOiBjZW50ZXI7CiAgICBqdXN0aWZ5LWNvbnRlbnQ6IHNwYWNlLWJldHdlZW47CiAgICBiYWNrZ3JvdW5kOiB2YXIoLS1wYW5lbCk7CiAgICBib3JkZXI6IDFweCBzb2xpZCB2YXIoLS1ib3JkZXIpOwogICAgYm9yZGVyLXJhZGl1czogdmFyKC0tcmFkaXVzKTsKICAgIHBhZGRpbmc6IDEycHg7CiAgICBtYXJnaW4tYm90dG9tOiAxNnB4OwogICAgZ2FwOiAxMHB4OwogIH0KICAuc2NoZWQtZGF0ZS1sYWJlbCB7CiAgICBmb250LXNpemU6IDAuNzhyZW07CiAgICBjb2xvcjogdmFyKC0tbXV0ZWQpOwogICAgZm9udC13ZWlnaHQ6IDYwMDsKICB9CiAgLnNjaGVkLWRhdGUtaW5wdXQgewogICAgYmFja2dyb3VuZDogdmFyKC0tcGFuZWwyKTsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlcik7CiAgICBjb2xvcjogdmFyKC0tdGV4dCk7CiAgICBib3JkZXItcmFkaXVzOiA4cHg7CiAgICBwYWRkaW5nOiA4cHggMTBweDsKICAgIGZvbnQtc2l6ZTogMC44NXJlbTsKICAgIGZvbnQtZmFtaWx5OiBpbmhlcml0OwogIH0KICAuc2NoZWQtZGF0ZS12YWx1ZSB7CiAgICBmb250LXNpemU6IDAuODVyZW07CiAgICBmb250LXdlaWdodDogNzAwOwogICAgY29sb3I6IHZhcigtLWFjY2VudDIpOwogIH0KICAuc2NoZWQtZ3JpZC1zY3JvbGwgewogICAgb3ZlcmZsb3cteDogYXV0bzsKICAgIC13ZWJraXQtb3ZlcmZsb3ctc2Nyb2xsaW5nOiB0b3VjaDsKICAgIHBhZGRpbmctYm90dG9tOiA0cHg7CiAgfQogIC5zY2hlZC13ZWVrZGF5LXJvdyB7CiAgICBkaXNwbGF5OiBncmlkOwogICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoNywgbWlubWF4KDEwNHB4LCAxZnIpKTsKICAgIGdhcDogNnB4OwogICAgbWFyZ2luLWJvdHRvbTogNnB4OwogICAgbWluLXdpZHRoOiA3NzBweDsKICB9CiAgLnNjaGVkLXdlZWtkYXktaGVhZCB7CiAgICB0ZXh0LWFsaWduOiBjZW50ZXI7CiAgICBmb250LXNpemU6IDAuNjRyZW07CiAgICB0ZXh0LXRyYW5zZm9ybTogdXBwZXJjYXNlOwogICAgbGV0dGVyLXNwYWNpbmc6IDAuMDVlbTsKICAgIGNvbG9yOiB2YXIoLS1tdXRlZCk7CiAgICBmb250LXdlaWdodDogNzAwOwogICAgcGFkZGluZzogMnB4IDA7CiAgfQogIC5zY2hlZC13ZWVrLXJvdyB7CiAgICBkaXNwbGF5OiBncmlkOwogICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoNywgbWlubWF4KDEwNHB4LCAxZnIpKTsKICAgIGdhcDogNnB4OwogICAgbWFyZ2luLWJvdHRvbTogMTBweDsKICAgIG1pbi13aWR0aDogNzcwcHg7CiAgfQogIC5zY2hlZC1kYXkgewogICAgYmFja2dyb3VuZDogdmFyKC0tcGFuZWwpOwogICAgYm9yZGVyOiAxcHggc29saWQgdmFyKC0tYm9yZGVyKTsKICAgIGJvcmRlci1yYWRpdXM6IDEycHg7CiAgICBwYWRkaW5nOiA4cHg7CiAgfQogIC5zY2hlZC1kYXkub3V0c2lkZSB7CiAgICBvcGFjaXR5OiAwLjM1OwogIH0KICAuc2NoZWQtZGF5LWhlYWQgewogICAgZGlzcGxheTogZmxleDsKICAgIGZsZXgtZGlyZWN0aW9uOiBjb2x1bW47CiAgICBnYXA6IDFweDsKICAgIG1hcmdpbi1ib3R0b206IDZweDsKICB9CiAgLnNjaGVkLWRheS1uYW1lIHsKICAgIGZvbnQtc2l6ZTogMC42NnJlbTsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgfQogIC5zY2hlZC1kYXktZGF0ZSB7CiAgICBmb250LXNpemU6IDAuNnJlbTsKICAgIGNvbG9yOiB2YXIoLS1tdXRlZCk7CiAgfQogIC5zY2hlZC1jb3VudGVyIHsKICAgIHRleHQtYWxpZ246IGNlbnRlcjsKICAgIGZvbnQtc2l6ZTogMC43OHJlbTsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgICBjb2xvcjogdmFyKC0tYWNjZW50Mik7CiAgICBiYWNrZ3JvdW5kOiB2YXIoLS1wYW5lbCk7CiAgICBib3JkZXI6IDFweCBzb2xpZCB2YXIoLS1ib3JkZXIpOwogICAgYm9yZGVyLXJhZGl1czogMTBweDsKICAgIHBhZGRpbmc6IDhweDsKICAgIG1hcmdpbi1ib3R0b206IDE0cHg7CiAgfQogIC5zY2hlZC1lbnRyeSB7CiAgICBkaXNwbGF5OiBmbGV4OwogICAgYWxpZ24taXRlbXM6IGNlbnRlcjsKICAgIGdhcDogNnB4OwogICAgYmFja2dyb3VuZDogdmFyKC0tcGFuZWwyKTsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlcik7CiAgICBib3JkZXItcmFkaXVzOiA4cHg7CiAgICBwYWRkaW5nOiA2cHggOHB4OwogICAgbWFyZ2luLWJvdHRvbTogNHB4OwogICAgZm9udC1zaXplOiAwLjhyZW07CiAgfQogIC5zY2hlZC1lbnRyeS1pY29uIHsgZm9udC1zaXplOiAxcmVtOyB9CiAgLnNjaGVkLWVudHJ5LW5hbWUgeyBmbGV4OiAxOyBtaW4td2lkdGg6IDA7IG92ZXJmbG93OiBoaWRkZW47IHRleHQtb3ZlcmZsb3c6IGVsbGlwc2lzOyB3aGl0ZS1zcGFjZTogbm93cmFwOyB9CiAgLnNjaGVkLWVudHJ5LXRhZyB7CiAgICBmb250LXNpemU6IDAuNnJlbTsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgICB0ZXh0LXRyYW5zZm9ybTogdXBwZXJjYXNlOwogICAgbGV0dGVyLXNwYWNpbmc6IDAuMDRlbTsKICAgIGNvbG9yOiB2YXIoLS1hY2NlbnQpOwogICAgYmFja2dyb3VuZDogcmdiYSg5NCwgMjAwLCAyNTUsIDAuMTIpOwogICAgYm9yZGVyOiAxcHggc29saWQgcmdiYSg5NCwgMjAwLCAyNTUsIDAuMyk7CiAgICBib3JkZXItcmFkaXVzOiA2cHg7CiAgICBwYWRkaW5nOiAycHggNXB4OwogICAgY3Vyc29yOiBwb2ludGVyOwogICAgd2hpdGUtc3BhY2U6IG5vd3JhcDsKICAgIGZsZXgtc2hyaW5rOiAwOwogIH0KICAuc2NoZWQtZW50cnktdGFnLnVudGFnZ2VkIHsKICAgIGNvbG9yOiB2YXIoLS1tdXRlZCk7CiAgICBiYWNrZ3JvdW5kOiB0cmFuc3BhcmVudDsKICAgIGJvcmRlci1zdHlsZTogZGFzaGVkOwogIH0KICAuc2NoZWQtZW50cnktcmVtb3ZlIHsKICAgIGNvbG9yOiB2YXIoLS1wZW5kaW5nKTsKICAgIGN1cnNvcjogcG9pbnRlcjsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgICBwYWRkaW5nOiAwIDJweDsKICAgIGZsZXgtc2hyaW5rOiAwOwogIH0KICAuc2NoZWQtZW1wdHktc2xvdCB7CiAgICBmb250LXNpemU6IDAuNzRyZW07CiAgICBjb2xvcjogdmFyKC0tbXV0ZWQpOwogICAgb3BhY2l0eTogMC42OwogICAgcGFkZGluZzogMnB4IDA7CiAgfQogIC5zY2hlZC1hZGQtcm93IHsKICAgIGRpc3BsYXk6IGZsZXg7CiAgICBnYXA6IDZweDsKICAgIG1hcmdpbi10b3A6IDZweDsKICB9CiAgLnNjaGVkLXNlbGVjdCB7CiAgICBmbGV4OiAxOwogICAgYmFja2dyb3VuZDogdmFyKC0tcGFuZWwyKTsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlcik7CiAgICBjb2xvcjogdmFyKC0tdGV4dCk7CiAgICBib3JkZXItcmFkaXVzOiA4cHg7CiAgICBwYWRkaW5nOiA2cHggOHB4OwogICAgZm9udC1zaXplOiAwLjc4cmVtOwogICAgZm9udC1mYW1pbHk6IGluaGVyaXQ7CiAgfQogIC5zY2hlZC1hZGQtYnRuIHsKICAgIGJhY2tncm91bmQ6IHZhcigtLWFjY2VudDIpOwogICAgY29sb3I6ICMwYjBkMTI7CiAgICBib3JkZXI6IG5vbmU7CiAgICBib3JkZXItcmFkaXVzOiA4cHg7CiAgICBwYWRkaW5nOiA2cHggMTBweDsKICAgIGZvbnQtc2l6ZTogMC43OHJlbTsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgICBjdXJzb3I6IHBvaW50ZXI7CiAgICB3aGl0ZS1zcGFjZTogbm93cmFwOwogIH0KICAuc2NoZWQtdGFnLW1lbnUgewogICAgcG9zaXRpb246IGFic29sdXRlOwogICAgei1pbmRleDogMjA7CiAgICBiYWNrZ3JvdW5kOiB2YXIoLS1wYW5lbDIpOwogICAgYm9yZGVyOiAxcHggc29saWQgdmFyKC0tYm9yZGVyKTsKICAgIGJvcmRlci1yYWRpdXM6IDhweDsKICAgIHBhZGRpbmc6IDRweDsKICAgIGRpc3BsYXk6IGZsZXg7CiAgICBnYXA6IDRweDsKICAgIGJveC1zaGFkb3c6IDAgNnB4IDE4cHggcmdiYSgwLDAsMCwwLjQpOwogIH0KICAuc2NoZWQtdGFnLW1lbnUtb3B0IHsKICAgIGZvbnQtc2l6ZTogMC42OHJlbTsKICAgIGZvbnQtd2VpZ2h0OiA3MDA7CiAgICBwYWRkaW5nOiA1cHggOHB4OwogICAgYm9yZGVyLXJhZGl1czogNnB4OwogICAgY3Vyc29yOiBwb2ludGVyOwogICAgY29sb3I6IHZhcigtLXRleHQpOwogIH0KICAuc2NoZWQtdGFnLW1lbnUtb3B0OmhvdmVyIHsgYmFja2dyb3VuZDogdmFyKC0tYWNjZW50KTsgY29sb3I6ICMwYjBkMTI7IH0KPC9zdHlsZT4KPC9oZWFkPgo8Ym9keT4KCjxoMT7wn46vIEFjdGl2aXR5IFRyYWNrZXI8L2gxPgoKPGRpdiBjbGFzcz0idGFiLXJvdyI+CiAgPGRpdiBjbGFzcz0idGFiLWJ0biBhY3RpdmUiIGRhdGEtdGFiPSJkYXNoYm9hcmQiPkRhc2hib2FyZDwvZGl2PgogIDxkaXYgY2xhc3M9InRhYi1idG4iIGRhdGEtdGFiPSJzY2hlZHVsaW5nIj5TY2hlZHVsZTwvZGl2Pgo8L2Rpdj4KCjxkaXYgaWQ9InRhYi1kYXNoYm9hcmQiIGNsYXNzPSJ0YWItcGFuZWwgYWN0aXZlIj4KCjwhLS0gPT09PT0gREFTSEJPQVJEID09PT09IC0tPgo8ZGl2IGNsYXNzPSJkYXNoLWdyaWQiPgogIDxkaXYgY2xhc3M9InN0YXQtY2FyZCB3aWRlIHJpbmctd3JhcCI+CiAgICA8c3ZnIGNsYXNzPSJyaW5nIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+CiAgICAgIDxjaXJjbGUgY2xhc3M9InJpbmctYmciIGN4PSI1MCIgY3k9IjUwIiByPSI0MCI+PC9jaXJjbGU+CiAgICAgIDxjaXJjbGUgY2xhc3M9InJpbmctZmciIGlkPSJyaW5nRmciIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgc3Ryb2tlLWRhc2hhcnJheT0iMjUxLjIiIHN0cm9rZS1kYXNob2Zmc2V0PSJfX1JJTkdfT0ZGU0VUX18iPjwvY2lyY2xlPgogICAgPC9zdmc+CiAgICA8ZGl2PgogICAgICA8ZGl2IGNsYXNzPSJyaW5nLXBjdCIgaWQ9Im92ZXJhbGxQY3QiPl9fT1ZFUkFMTF9QQ1RfXzwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJzdGF0LWxhYmVsIiBpZD0ib3ZlcmFsbENvdW50Ij5fX09WRVJBTExfQ09VTlRfXzwvZGl2PgogICAgPC9kaXY+CiAgPC9kaXY+CiAgPGRpdiBjbGFzcz0ic3RhdC1jYXJkIj4KICAgIDxkaXYgY2xhc3M9InN0YXQtbnVtIiBpZD0iZG9uZUNvdW50Ij5fX0RPTkVfQ09VTlRfXzwvZGl2PgogICAgPGRpdiBjbGFzcz0ic3RhdC1sYWJlbCI+Q29tcGxldGVkPC9kaXY+CiAgPC9kaXY+CiAgPGRpdiBjbGFzcz0ic3RhdC1jYXJkIj4KICAgIDxkaXYgY2xhc3M9InN0YXQtbnVtIiBpZD0icGVuZGluZ0NvdW50Ij5fX1BFTkRJTkdfQ09VTlRfXzwvZGl2PgogICAgPGRpdiBjbGFzcz0ic3RhdC1sYWJlbCI+UGVuZGluZzwvZGl2PgogIDwvZGl2Pgo8L2Rpdj4KCjxoMiBjbGFzcz0ic2VjdGlvbi10aXRsZSI+QnkgQ2F0ZWdvcnk8L2gyPgo8ZGl2IGNsYXNzPSJzdGF0LWNhcmQgd2lkZSI+CiAgPGRpdiBjbGFzcz0iY2F0LWJhcnMiIGlkPSJjYXRCYXJzIj5fX0NBVF9CQVJTX188L2Rpdj4KPC9kaXY+Cgo8IS0tID09PT09IFNVR0dFU1RFRCBORVhUID09PT09IC0tPgo8aDIgY2xhc3M9InNlY3Rpb24tdGl0bGUiPlN1Z2dlc3RlZCBOZXh0PC9oMj4KPGRpdiBjbGFzcz0ic3VnZ2VzdC1yb3ciIGlkPSJzdWdnZXN0Um93Ij5fX1NVR0dFU1RfUk9XX188L2Rpdj4KCjxkaXYgY2xhc3M9InJhbmRvbS1waWNrIj4KICA8ZGl2IGNsYXNzPSJyYW5kb20tcGljay1sZWZ0Ij4KICAgIDxkaXYgY2xhc3M9InJhbmRvbS1waWNrLWxhYmVsIj7wn46yIFJhbmRvbSBQaWNrPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJyYW5kb20tcGljay1uYW1lIiBpZD0icmFuZG9tTmFtZSI+X19SQU5ET01fTkFNRV9fPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJyYW5kb20tcGljay1jYXQiIGlkPSJyYW5kb21DYXQiPl9fUkFORE9NX0NBVF9fPC9kaXY+CiAgPC9kaXY+CiAgPGJ1dHRvbiBjbGFzcz0ic2h1ZmZsZS1idG4iIGlkPSJzaHVmZmxlQnRuIj5TaHVmZmxlIPCflIA8L2J1dHRvbj4KPC9kaXY+Cgo8IS0tID09PT09IEZJTFRFUlMgPT09PT0gLS0+CjxkaXYgY2xhc3M9ImZpbHRlci1ibG9jayI+CiAgPGgyIGNsYXNzPSJzZWN0aW9uLXRpdGxlIiBzdHlsZT0ibWFyZ2luLXRvcDowOyI+QWxsIEFjdGl2aXRpZXM8L2gyPgoKICA8ZGl2IGNsYXNzPSJmaWx0ZXItZ3JvdXAtbGFiZWwiPkNhdGVnb3J5PC9kaXY+CiAgPGRpdiBjbGFzcz0iY2hpcC1yb3ciIGlkPSJjYXRlZ29yeUNoaXBzIj5fX0NBVEVHT1JZX0NISVBTX188L2Rpdj4KCiAgPGRpdiBjbGFzcz0iZmlsdGVyLWdyb3VwLWxhYmVsIj5TdGF0dXM8L2Rpdj4KICA8ZGl2IGNsYXNzPSJjaGlwLXJvdyIgaWQ9InN0YXR1c0NoaXBzIj4KICAgIDxkaXYgY2xhc3M9ImNoaXAgYWN0aXZlIiBkYXRhLXN0YXR1cz0iYWxsIj5BbGw8L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImNoaXAiIGRhdGEtc3RhdHVzPSJkb25lIj5Db21wbGV0ZWQ8L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImNoaXAiIGRhdGEtc3RhdHVzPSJwZW5kaW5nIj5QZW5kaW5nPC9kaXY+CiAgPC9kaXY+CgogIDxkaXYgY2xhc3M9ImZpbHRlci1ncm91cC1sYWJlbCI+U29ydDwvZGl2PgogIDxkaXYgY2xhc3M9ImNoaXAtcm93IiBpZD0ic29ydENoaXBzIj4KICAgIDxkaXYgY2xhc3M9ImNoaXAgYWN0aXZlIiBkYXRhLXNvcnQ9ImNhdGVnb3J5Ij5CeSBDYXRlZ29yeTwvZGl2PgogICAgPGRpdiBjbGFzcz0iY2hpcCIgZGF0YS1zb3J0PSJhbHBoYSI+QWxwaGFiZXRpY2FsPC9kaXY+CiAgPC9kaXY+CjwvZGl2PgoKPCEtLSA9PT09PSBCRU5UTyBMSVNUID09PT09IC0tPgo8ZGl2IGNsYXNzPSJiZW50by1ncmlkIiBpZD0iYmVudG9HcmlkIj5fX0JFTlRPX0dSSURfXzwvZGl2Pgo8ZGl2IGNsYXNzPSJlbXB0eS1zdGF0ZSIgaWQ9ImVtcHR5U3RhdGUiIHN0eWxlPSJkaXNwbGF5Om5vbmU7Ij5ObyBhY3Rpdml0aWVzIG1hdGNoIHRoZXNlIGZpbHRlcnMuPC9kaXY+Cgo8L2Rpdj4KCjwhLS0gPT09PT0gU0NIRURVTEUgVEFCID09PT09IC0tPgo8ZGl2IGlkPSJ0YWItc2NoZWR1bGluZyIgY2xhc3M9InRhYi1wYW5lbCI+CiAgPGRpdiBjbGFzcz0ic2NoZWQtdG9vbGJhciI+CiAgICA8ZGl2IGNsYXNzPSJzY2hlZC1kYXRlLWxhYmVsIj5TY2hlZHVsZSBzdGFydHM8L2Rpdj4KICAgIDxkaXYgY2xhc3M9InNjaGVkLWRhdGUtdmFsdWUiIGlkPSJzY2hlZFN0YXJ0RGF0ZURpc3BsYXkiPl9fU0NIRURfREFURV9ESVNQTEFZX188L2Rpdj4KICA8L2Rpdj4KICA8ZGl2IGNsYXNzPSJzY2hlZC1jb3VudGVyIiBpZD0ic2NoZWRDb3VudGVyIj5fX1NDSEVEX0NPVU5URVJfXzwvZGl2PgogIDxkaXYgY2xhc3M9InNjaGVkLWdyaWQtc2Nyb2xsIj48ZGl2IGlkPSJzY2hlZFdlZWtzIj5fX1NDSEVEX1dFRUtTX0hUTUxfXzwvZGl2PjwvZGl2Pgo8L2Rpdj4KCjxmb290ZXI+UmVhZC1vbmx5IHByb2dyZXNzIHJlcG9ydCDCtyBkYXRhIHVwZGF0ZWQgbWFudWFsbHkgZnJvbSBzb3VyY2U8L2Zvb3Rlcj4KCjxzY3JpcHQ+CmNvbnN0IEFDVElWSVRJRVMgPSBfX0FDVElWSVRJRVNfSlNPTl9fOwoKY29uc3QgQ0FURUdPUllfT1JERVIgPSBbIkV2ZXJ5ZGF5IENhcmRpbyIsICJIb21lIEd5bSIsICJHcm91cCBGaXRuZXNzIiwgIldoZWVscyIsICJDb21iYXQgU3BvcnRzIiwgIlJhY3F1ZXQgU3BvcnRzIiwgIkNhc3VhbCBHYW1lcyIsICJCYWxsIFNwb3J0cyIsICJOaWNoZSBTcG9ydHMiLCAiV2F0ZXIgU3BvcnRzIiwgIlNub3cgU3BvcnRzIiwgIkV4dHJlbWUgQWR2ZW50dXJlIiwgIlBlcmZvcm1hbmNlIiwgIlNpZGUgR2lncyIsICJRdWljayBSZWNvdmVyeSIsICJTcGEgUmVjb3ZlcnkiLCAiTGlmZSIsICJGYW1pbHkiLCAiT3RoZXIiXTsKCmxldCBzdGF0ZSA9IHsgY2F0ZWdvcnk6ICJhbGwiLCBzdGF0dXM6ICJhbGwiLCBzb3J0OiAiY2F0ZWdvcnkiIH07CgpmdW5jdGlvbiBnZXRDYXRlZ29yaWVzKCkgewogIGNvbnN0IHNldCA9IG5ldyBTZXQoQUNUSVZJVElFUy5tYXAoYSA9PiBhLmNhdGVnb3J5KSk7CiAgcmV0dXJuIENBVEVHT1JZX09SREVSLmZpbHRlcihjID0+IHNldC5oYXMoYykpOwp9CgpmdW5jdGlvbiByZW5kZXJEYXNoYm9hcmQoKSB7CiAgY29uc3QgdG90YWwgPSBBQ1RJVklUSUVTLmxlbmd0aDsKICBjb25zdCBkb25lID0gQUNUSVZJVElFUy5maWx0ZXIoYSA9PiBhLmRvbmUpLmxlbmd0aDsKICBjb25zdCBwZW5kaW5nID0gdG90YWwgLSBkb25lOwogIGNvbnN0IHBjdCA9IHRvdGFsID8gTWF0aC5yb3VuZCgoZG9uZSAvIHRvdGFsKSAqIDEwMCkgOiAwOwoKICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnb3ZlcmFsbFBjdCcpLnRleHRDb250ZW50ID0gcGN0ICsgJyUnOwogIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdvdmVyYWxsQ291bnQnKS50ZXh0Q29udGVudCA9IGAke2RvbmV9IC8gJHt0b3RhbH0gY29tcGxldGVgOwogIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdkb25lQ291bnQnKS50ZXh0Q29udGVudCA9IGRvbmU7CiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3BlbmRpbmdDb3VudCcpLnRleHRDb250ZW50ID0gcGVuZGluZzsKCiAgY29uc3QgY2lyY3VtZmVyZW5jZSA9IDI1MS4yOwogIGNvbnN0IG9mZnNldCA9IGNpcmN1bWZlcmVuY2UgLSAoY2lyY3VtZmVyZW5jZSAqIHBjdCAvIDEwMCk7CiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3JpbmdGZycpLnN0eWxlLnN0cm9rZURhc2hvZmZzZXQgPSBvZmZzZXQ7CgogIGNvbnN0IGNhdEJhcnMgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnY2F0QmFycycpOwogIGNhdEJhcnMuaW5uZXJIVE1MID0gJyc7CiAgY29uc3QgYWxsQ2F0cyA9IGdldENhdGVnb3JpZXMoKTsKICBjb25zdCBpbmNvbXBsZXRlQ2F0cyA9IFtdOwogIGNvbnN0IGNvbXBsZXRlQ2F0cyA9IFtdOwogIGFsbENhdHMuZm9yRWFjaChjYXQgPT4gewogICAgY29uc3QgaXRlbXMgPSBBQ1RJVklUSUVTLmZpbHRlcihhID0+IGEuY2F0ZWdvcnkgPT09IGNhdCk7CiAgICBjb25zdCBjYXREb25lID0gaXRlbXMuZmlsdGVyKGEgPT4gYS5kb25lKS5sZW5ndGg7CiAgICBpZiAoaXRlbXMubGVuZ3RoICYmIGNhdERvbmUgPT09IGl0ZW1zLmxlbmd0aCkgewogICAgICBjb21wbGV0ZUNhdHMucHVzaChjYXQpOwogICAgfSBlbHNlIHsKICAgICAgaW5jb21wbGV0ZUNhdHMucHVzaChjYXQpOwogICAgfQogIH0pOwogIGNvbnN0IG9yZGVyZWRDYXRzID0gaW5jb21wbGV0ZUNhdHMuY29uY2F0KGNvbXBsZXRlQ2F0cyk7CiAgb3JkZXJlZENhdHMuZm9yRWFjaChjYXQgPT4gewogICAgY29uc3QgaXRlbXMgPSBBQ1RJVklUSUVTLmZpbHRlcihhID0+IGEuY2F0ZWdvcnkgPT09IGNhdCk7CiAgICBjb25zdCBjYXREb25lID0gaXRlbXMuZmlsdGVyKGEgPT4gYS5kb25lKS5sZW5ndGg7CiAgICBjb25zdCBjYXRQY3QgPSBpdGVtcy5sZW5ndGggPyBNYXRoLnJvdW5kKChjYXREb25lIC8gaXRlbXMubGVuZ3RoKSAqIDEwMCkgOiAwOwogICAgY29uc3Qgcm93ID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnZGl2Jyk7CiAgICByb3cuY2xhc3NOYW1lID0gJ2NhdC1iYXItcm93JzsKICAgIHJvdy5pbm5lckhUTUwgPSBgCiAgICAgIDxkaXYgY2xhc3M9ImNhdC1iYXItaGVhZCI+PHNwYW4+JHtjYXR9PC9zcGFuPjxiPiR7Y2F0RG9uZX0vJHtpdGVtcy5sZW5ndGh9IMK3ICR7Y2F0UGN0fSU8L2I+PC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9ImNhdC1iYXItdHJhY2siPjxkaXYgY2xhc3M9ImNhdC1iYXItZmlsbCIgc3R5bGU9IndpZHRoOiR7Y2F0UGN0fSUiPjwvZGl2PjwvZGl2PgogICAgYDsKICAgIGNhdEJhcnMuYXBwZW5kQ2hpbGQocm93KTsKICB9KTsKfQoKZnVuY3Rpb24gcmVuZGVyU3VnZ2VzdGVkKCkgewogIGNvbnN0IHBlbmRpbmdJdGVtcyA9IEFDVElWSVRJRVMuZmlsdGVyKGEgPT4gIWEuZG9uZSk7CiAgY29uc3Qgc2h1ZmZsZWQgPSBbLi4ucGVuZGluZ0l0ZW1zXS5zb3J0KCgpID0+IE1hdGgucmFuZG9tKCkgLSAwLjUpOwogIGNvbnN0IHBpY2tzID0gW107CiAgY29uc3Qgc2VlbkNhdHMgPSBuZXcgU2V0KCk7CiAgZm9yIChjb25zdCBpdGVtIG9mIHNodWZmbGVkKSB7CiAgICBpZiAocGlja3MubGVuZ3RoID49IDMpIGJyZWFrOwogICAgaWYgKCFzZWVuQ2F0cy5oYXMoaXRlbS5jYXRlZ29yeSkpIHsKICAgICAgcGlja3MucHVzaChpdGVtKTsKICAgICAgc2VlbkNhdHMuYWRkKGl0ZW0uY2F0ZWdvcnkpOwogICAgfQogIH0KICBmb3IgKGNvbnN0IGl0ZW0gb2Ygc2h1ZmZsZWQpIHsKICAgIGlmIChwaWNrcy5sZW5ndGggPj0gMykgYnJlYWs7CiAgICBpZiAoIXBpY2tzLmluY2x1ZGVzKGl0ZW0pKSBwaWNrcy5wdXNoKGl0ZW0pOwogIH0KCiAgY29uc3Qgcm93ID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3N1Z2dlc3RSb3cnKTsKICByb3cuaW5uZXJIVE1MID0gJyc7CiAgaWYgKHBpY2tzLmxlbmd0aCA9PT0gMCkgewogICAgcm93LmlubmVySFRNTCA9IGA8ZGl2IGNsYXNzPSJzdWdnZXN0LWNhcmQiPjxkaXYgY2xhc3M9InN1Z2dlc3QtbmFtZSI+8J+OiSBBbGwgZG9uZSE8L2Rpdj48L2Rpdj5gOwogICAgcmV0dXJuOwogIH0KICBwaWNrcy5mb3JFYWNoKHAgPT4gewogICAgY29uc3QgY2FyZCA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ2RpdicpOwogICAgY2FyZC5jbGFzc05hbWUgPSAnc3VnZ2VzdC1jYXJkJzsKICAgIGNhcmQuaW5uZXJIVE1MID0gYAogICAgICA8ZGl2IGNsYXNzPSJzdWdnZXN0LWljb24iPiR7cC5pY29ufTwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJzdWdnZXN0LW5hbWUiPiR7cC5hY3Rpdml0eX08L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0ic3VnZ2VzdC1jYXQiPiR7cC5jYXRlZ29yeX08L2Rpdj4KICAgIGA7CiAgICByb3cuYXBwZW5kQ2hpbGQoY2FyZCk7CiAgfSk7Cn0KCmZ1bmN0aW9uIGdldEZpbHRlcmVkSXRlbXMoKSB7CiAgbGV0IGl0ZW1zID0gWy4uLkFDVElWSVRJRVNdOwogIGlmIChzdGF0ZS5jYXRlZ29yeSAhPT0gJ2FsbCcpIGl0ZW1zID0gaXRlbXMuZmlsdGVyKGEgPT4gYS5jYXRlZ29yeSA9PT0gc3RhdGUuY2F0ZWdvcnkpOwogIGlmIChzdGF0ZS5zdGF0dXMgPT09ICdkb25lJykgaXRlbXMgPSBpdGVtcy5maWx0ZXIoYSA9PiBhLmRvbmUpOwogIGlmIChzdGF0ZS5zdGF0dXMgPT09ICdwZW5kaW5nJykgaXRlbXMgPSBpdGVtcy5maWx0ZXIoYSA9PiAhYS5kb25lKTsKICByZXR1cm4gaXRlbXM7Cn0KCmZ1bmN0aW9uIHBpY2tSYW5kb20oKSB7CiAgY29uc3Qgc2NvcGVkID0gZ2V0RmlsdGVyZWRJdGVtcygpLmZpbHRlcihhID0+ICFhLmRvbmUpOwogIGlmIChzY29wZWQubGVuZ3RoID09PSAwKSB7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncmFuZG9tTmFtZScpLmlubmVySFRNTCA9ICfwn46JIEFsbCBkb25lISc7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncmFuZG9tQ2F0JykudGV4dENvbnRlbnQgPSAnJzsKICAgIHJldHVybjsKICB9CiAgY29uc3QgcGljayA9IHNjb3BlZFtNYXRoLmZsb29yKE1hdGgucmFuZG9tKCkgKiBzY29wZWQubGVuZ3RoKV07CiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3JhbmRvbU5hbWUnKS5pbm5lckhUTUwgPSBgPHNwYW4gY2xhc3M9InJhbmRvbS1waWNrLWljb24iPiR7cGljay5pY29ufTwvc3Bhbj4ke3BpY2suYWN0aXZpdHl9YDsKICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncmFuZG9tQ2F0JykudGV4dENvbnRlbnQgPSBwaWNrLmNhdGVnb3J5Owp9CgpmdW5jdGlvbiByZW5kZXJDaGlwcygpIHsKICBjb25zdCBjYXRXcmFwID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2NhdGVnb3J5Q2hpcHMnKTsKICBjYXRXcmFwLmlubmVySFRNTCA9ICc8ZGl2IGNsYXNzPSJjaGlwIGFjdGl2ZSIgZGF0YS1jYXQ9ImFsbCI+QWxsPC9kaXY+JyArCiAgICBnZXRDYXRlZ29yaWVzKCkubWFwKGMgPT4gYDxkaXYgY2xhc3M9ImNoaXAiIGRhdGEtY2F0PSIke2N9Ij4ke2N9PC9kaXY+YCkuam9pbignJyk7CgogIGNhdFdyYXAucXVlcnlTZWxlY3RvckFsbCgnLmNoaXAnKS5mb3JFYWNoKGNoaXAgPT4gewogICAgY2hpcC5hZGRFdmVudExpc3RlbmVyKCdjbGljaycsICgpID0+IHsKICAgICAgY2F0V3JhcC5xdWVyeVNlbGVjdG9yQWxsKCcuY2hpcCcpLmZvckVhY2goYyA9PiBjLmNsYXNzTGlzdC5yZW1vdmUoJ2FjdGl2ZScpKTsKICAgICAgY2hpcC5jbGFzc0xpc3QuYWRkKCdhY3RpdmUnKTsKICAgICAgc3RhdGUuY2F0ZWdvcnkgPSBjaGlwLmRhdGFzZXQuY2F0OwogICAgICByZW5kZXJCZW50bygpOwogICAgICBwaWNrUmFuZG9tKCk7CiAgICB9KTsKICB9KTsKCiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3N0YXR1c0NoaXBzJykucXVlcnlTZWxlY3RvckFsbCgnLmNoaXAnKS5mb3JFYWNoKGNoaXAgPT4gewogICAgY2hpcC5hZGRFdmVudExpc3RlbmVyKCdjbGljaycsICgpID0+IHsKICAgICAgY2hpcC5wYXJlbnRFbGVtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJy5jaGlwJykuZm9yRWFjaChjID0+IGMuY2xhc3NMaXN0LnJlbW92ZSgnYWN0aXZlJykpOwogICAgICBjaGlwLmNsYXNzTGlzdC5hZGQoJ2FjdGl2ZScpOwogICAgICBzdGF0ZS5zdGF0dXMgPSBjaGlwLmRhdGFzZXQuc3RhdHVzOwogICAgICByZW5kZXJCZW50bygpOwogICAgICBwaWNrUmFuZG9tKCk7CiAgICB9KTsKICB9KTsKCiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3NvcnRDaGlwcycpLnF1ZXJ5U2VsZWN0b3JBbGwoJy5jaGlwJykuZm9yRWFjaChjaGlwID0+IHsKICAgIGNoaXAuYWRkRXZlbnRMaXN0ZW5lcignY2xpY2snLCAoKSA9PiB7CiAgICAgIGNoaXAucGFyZW50RWxlbWVudC5xdWVyeVNlbGVjdG9yQWxsKCcuY2hpcCcpLmZvckVhY2goYyA9PiBjLmNsYXNzTGlzdC5yZW1vdmUoJ2FjdGl2ZScpKTsKICAgICAgY2hpcC5jbGFzc0xpc3QuYWRkKCdhY3RpdmUnKTsKICAgICAgc3RhdGUuc29ydCA9IGNoaXAuZGF0YXNldC5zb3J0OwogICAgICByZW5kZXJCZW50bygpOwogICAgfSk7CiAgfSk7Cn0KCmZ1bmN0aW9uIHJlbmRlckJlbnRvKCkgewogIGxldCBpdGVtcyA9IGdldEZpbHRlcmVkSXRlbXMoKTsKCiAgY29uc3QgZ3JpZCA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdiZW50b0dyaWQnKTsKICBjb25zdCBlbXB0eSA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdlbXB0eVN0YXRlJyk7CiAgZ3JpZC5pbm5lckhUTUwgPSAnJzsKCiAgaWYgKGl0ZW1zLmxlbmd0aCA9PT0gMCkgewogICAgZW1wdHkuc3R5bGUuZGlzcGxheSA9ICdibG9jayc7CiAgICByZXR1cm47CiAgfQogIGVtcHR5LnN0eWxlLmRpc3BsYXkgPSAnbm9uZSc7CgogIGlmIChzdGF0ZS5zb3J0ID09PSAnYWxwaGEnKSB7CiAgICBpdGVtcy5zb3J0KChhLCBiKSA9PiBhLmFjdGl2aXR5LmxvY2FsZUNvbXBhcmUoYi5hY3Rpdml0eSkpOwogICAgaXRlbXMuZm9yRWFjaChpdGVtID0+IGdyaWQuYXBwZW5kQ2hpbGQoYnVpbGRCZW50b0NhcmQoaXRlbSkpKTsKICAgIHJldHVybjsKICB9CgogIGNvbnN0IGNhdHMgPSBnZXRDYXRlZ29yaWVzKCkuZmlsdGVyKGMgPT4gaXRlbXMuc29tZShpID0+IGkuY2F0ZWdvcnkgPT09IGMpKTsKICBjYXRzLmZvckVhY2goY2F0ID0+IHsKICAgIGNvbnN0IGNhdEl0ZW1zID0gaXRlbXMuZmlsdGVyKGkgPT4gaS5jYXRlZ29yeSA9PT0gY2F0KS5zb3J0KChhLCBiKSA9PiBhLmFjdGl2aXR5LmxvY2FsZUNvbXBhcmUoYi5hY3Rpdml0eSkpOwogICAgY29uc3QgZG9uZUNvdW50ID0gY2F0SXRlbXMuZmlsdGVyKGkgPT4gaS5kb25lKS5sZW5ndGg7CgogICAgY29uc3QgaGVhZGVyID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnZGl2Jyk7CiAgICBoZWFkZXIuY2xhc3NOYW1lID0gJ2NhdGVnb3J5LXNlY3Rpb24nOwogICAgaGVhZGVyLmlubmVySFRNTCA9IGAKICAgICAgPGRpdiBjbGFzcz0iY2F0ZWdvcnktc2VjdGlvbi10aXRsZSI+JHtjYXR9PC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9ImNhdGVnb3J5LXNlY3Rpb24tY291bnQiPiR7ZG9uZUNvdW50fS8ke2NhdEl0ZW1zLmxlbmd0aH08L2Rpdj4KICAgIGA7CiAgICBncmlkLmFwcGVuZENoaWxkKGhlYWRlcik7CgogICAgY2F0SXRlbXMuZm9yRWFjaChpdGVtID0+IGdyaWQuYXBwZW5kQ2hpbGQoYnVpbGRCZW50b0NhcmQoaXRlbSkpKTsKICB9KTsKfQoKZnVuY3Rpb24gaXNBY3Rpdml0eVBsYW5uZWQoaWQpIHsKICBmb3IgKGNvbnN0IGRhdGVLZXkgaW4gU0NIRURVTEVfREFUQSkgewogICAgY29uc3QgZW50cmllcyA9IFNDSEVEVUxFX0RBVEFbZGF0ZUtleV07CiAgICBpZiAoZW50cmllcyAmJiBlbnRyaWVzLnNvbWUoZSA9PiBlLmlkID09PSBpZCkpIHJldHVybiB0cnVlOwogIH0KICByZXR1cm4gZmFsc2U7Cn0KCmZ1bmN0aW9uIGJ1aWxkQmVudG9DYXJkKGl0ZW0pIHsKICBjb25zdCBjYXJkID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnZGl2Jyk7CiAgY2FyZC5jbGFzc05hbWUgPSAnYmVudG8tY2FyZCcgKyAoaXRlbS5kb25lID8gJyBkb25lJyA6ICcnKTsKICBjYXJkLmRhdGFzZXQuaWQgPSBpdGVtLmlkOwogIGNvbnN0IHBsYW5uZWRCYWRnZSA9IGlzQWN0aXZpdHlQbGFubmVkKGl0ZW0uaWQpID8gJzxkaXYgY2xhc3M9ImJlbnRvLXBsYW5uZWQtYmFkZ2UiPvCfk4UgUGxhbm5lZDwvZGl2PicgOiAnJzsKICBjYXJkLmlubmVySFRNTCA9IGAKICAgIDxkaXYgY2xhc3M9ImJlbnRvLXN0YXR1cy1kb3QiPjwvZGl2PgogICAgPGRpdiBjbGFzcz0iYmVudG8taWNvbiI+JHtpdGVtLmljb259PC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJiZW50by1uYW1lIj4ke2l0ZW0uYWN0aXZpdHl9PC9kaXY+CiAgICAke3BsYW5uZWRCYWRnZX0KICBgOwogIHJldHVybiBjYXJkOwp9Cgpkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnc2h1ZmZsZUJ0bicpLmFkZEV2ZW50TGlzdGVuZXIoJ2NsaWNrJywgcGlja1JhbmRvbSk7CgovLyAtLS0tLS0tLS0tIFRhYnMgLS0tLS0tLS0tLQpkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCcudGFiLWJ0bicpLmZvckVhY2goYnRuID0+IHsKICBidG4uYWRkRXZlbnRMaXN0ZW5lcignY2xpY2snLCAoKSA9PiB7CiAgICBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCcudGFiLWJ0bicpLmZvckVhY2goYiA9PiBiLmNsYXNzTGlzdC5yZW1vdmUoJ2FjdGl2ZScpKTsKICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJy50YWItcGFuZWwnKS5mb3JFYWNoKHAgPT4gcC5jbGFzc0xpc3QucmVtb3ZlKCdhY3RpdmUnKSk7CiAgICBidG4uY2xhc3NMaXN0LmFkZCgnYWN0aXZlJyk7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgndGFiLScgKyBidG4uZGF0YXNldC50YWIpLmNsYXNzTGlzdC5hZGQoJ2FjdGl2ZScpOwogIH0pOwp9KTsKCi8vIC0tLS0tLS0tLS0gU2NoZWR1bGluZyAocmVhZC1vbmx5IHZpZXcpIC0tLS0tLS0tLS0KY29uc3QgU0NIRURVTEVfU1RBUlQgPSAiX19TQ0hFRFVMRV9TVEFSVF9fIjsKY29uc3QgU0NIRURVTEVfREFUQSA9IF9fU0NIRURVTEVfSlNPTl9fOwpjb25zdCBTTE9UX09SREVSID0gWyJBTSIsICJQTSIsICJOaWdodCJdOwoKZnVuY3Rpb24gZmluZEFjdGl2aXR5QnlJZChpZCkgewogIHJldHVybiBBQ1RJVklUSUVTLmZpbmQoYSA9PiBhLmlkID09PSBpZCk7Cn0KCmZ1bmN0aW9uIGZvcm1hdERhdGVMYWJlbChkKSB7CiAgcmV0dXJuIGQudG9Mb2NhbGVEYXRlU3RyaW5nKHVuZGVmaW5lZCwgeyB3ZWVrZGF5OiAnbG9uZycgfSk7Cn0KZnVuY3Rpb24gZm9ybWF0RGF0ZVNob3J0KGQpIHsKICByZXR1cm4gZC50b0xvY2FsZURhdGVTdHJpbmcodW5kZWZpbmVkLCB7IG1vbnRoOiAnc2hvcnQnLCBkYXk6ICdudW1lcmljJyB9KTsKfQoKY29uc3QgV0VFS0RBWV9MQUJFTFMgPSBbJ1N1bicsICdNb24nLCAnVHVlJywgJ1dlZCcsICdUaHUnLCAnRnJpJywgJ1NhdCddOwoKZnVuY3Rpb24gcmVuZGVyU2NoZWR1bGUoKSB7CiAgY29uc3Qgd2Vla3NDb250YWluZXIgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnc2NoZWRXZWVrcycpOwogIGNvbnN0IGRhdGVEaXNwbGF5ID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3NjaGVkU3RhcnREYXRlRGlzcGxheScpOwogIGNvbnN0IGNvdW50ZXJFbCA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzY2hlZENvdW50ZXInKTsKICBpZiAoIXdlZWtzQ29udGFpbmVyKSByZXR1cm47CgogIGlmICghU0NIRURVTEVfU1RBUlQpIHsKICAgIGRhdGVEaXNwbGF5LnRleHRDb250ZW50ID0gJ05vdCBzZXQnOwogICAgaWYgKGNvdW50ZXJFbCkgY291bnRlckVsLnRleHRDb250ZW50ID0gJzAgYWN0aXZpdGllcyBwbGFubmVkJzsKICAgIHdlZWtzQ29udGFpbmVyLmlubmVySFRNTCA9ICc8ZGl2IGNsYXNzPSJlbXB0eS1zdGF0ZSI+Tm8gc2NoZWR1bGUgaGFzIGJlZW4gc2V0IHVwIHlldC48L2Rpdj4nOwogICAgcmV0dXJuOwogIH0KCiAgY29uc3Qgc3RhcnREYXRlID0gbmV3IERhdGUoU0NIRURVTEVfU1RBUlQgKyAnVDAwOjAwOjAwJyk7CiAgZGF0ZURpc3BsYXkudGV4dENvbnRlbnQgPSBzdGFydERhdGUudG9Mb2NhbGVEYXRlU3RyaW5nKHVuZGVmaW5lZCwgeyB3ZWVrZGF5OiAnbG9uZycsIG1vbnRoOiAnbG9uZycsIGRheTogJ251bWVyaWMnLCB5ZWFyOiAnbnVtZXJpYycgfSk7CgogIC8vIEFuY2hvciB0aGUgZ3JpZCB0byB0aGUgU3VuZGF5IG9uL2JlZm9yZSB0aGUgY2hvc2VuIHN0YXJ0IGRhdGUsIHNvIGV2ZXJ5IHJvdyBpcyBhIGZ1bGwgU3Vu4oCTU2F0IHdlZWsuCiAgY29uc3QgZ3JpZEFuY2hvciA9IG5ldyBEYXRlKHN0YXJ0RGF0ZSk7CiAgZ3JpZEFuY2hvci5zZXREYXRlKGdyaWRBbmNob3IuZ2V0RGF0ZSgpIC0gZ3JpZEFuY2hvci5nZXREYXkoKSk7CgogIC8vIElmIHRoZSBzdGFydCBkYXRlIGlzbid0IGEgU3VuZGF5LCB0aGUgcGFydGlhbCBsZWFkLWluIGRheXMgcHVzaCBhIDV0aCByb3cgdG8gY292ZXIgdGhlIGZ1bGwgNCB3ZWVrcyBmcm9tIHN0YXJ0LgogIGNvbnN0IG51bVdlZWtzID0gZ3JpZEFuY2hvci5nZXRUaW1lKCkgPT09IHN0YXJ0RGF0ZS5nZXRUaW1lKCkgPyA0IDogNTsKCiAgd2Vla3NDb250YWluZXIuaW5uZXJIVE1MID0gJyc7CgogIGNvbnN0IGhlYWRSb3cgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCdkaXYnKTsKICBoZWFkUm93LmNsYXNzTmFtZSA9ICdzY2hlZC13ZWVrZGF5LXJvdyc7CiAgaGVhZFJvdy5pbm5lckhUTUwgPSBXRUVLREFZX0xBQkVMUy5tYXAobCA9PiBgPGRpdiBjbGFzcz0ic2NoZWQtd2Vla2RheS1oZWFkIj4ke2x9PC9kaXY+YCkuam9pbignJyk7CiAgd2Vla3NDb250YWluZXIuYXBwZW5kQ2hpbGQoaGVhZFJvdyk7CgogIGxldCB0b3RhbFBsYW5uZWQgPSAwOwoKICBmb3IgKGxldCB3ZWVrID0gMDsgd2VlayA8IG51bVdlZWtzOyB3ZWVrKyspIHsKICAgIGNvbnN0IHdlZWtSb3cgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCdkaXYnKTsKICAgIHdlZWtSb3cuY2xhc3NOYW1lID0gJ3NjaGVkLXdlZWstcm93JzsKCiAgICBmb3IgKGxldCBkID0gMDsgZCA8IDc7IGQrKykgewogICAgICBjb25zdCBkYXlJbmRleCA9IHdlZWsgKiA3ICsgZDsKICAgICAgY29uc3QgZGF5RGF0ZSA9IG5ldyBEYXRlKGdyaWRBbmNob3IpOwogICAgICBkYXlEYXRlLnNldERhdGUoZGF5RGF0ZS5nZXREYXRlKCkgKyBkYXlJbmRleCk7CiAgICAgIGNvbnN0IGRhdGVLZXkgPSBkYXlEYXRlLnRvSVNPU3RyaW5nKCkuc2xpY2UoMCwgMTApOwogICAgICBjb25zdCBpc091dHNpZGUgPSBkYXlEYXRlIDwgc3RhcnREYXRlOwoKICAgICAgY29uc3QgZGF5RGl2ID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnZGl2Jyk7CiAgICAgIGRheURpdi5jbGFzc05hbWUgPSAnc2NoZWQtZGF5JyArIChpc091dHNpZGUgPyAnIG91dHNpZGUnIDogJycpOwoKICAgICAgY29uc3QgZW50cmllcyA9IFNDSEVEVUxFX0RBVEFbZGF0ZUtleV0gfHwgW107CiAgICAgIHRvdGFsUGxhbm5lZCArPSBlbnRyaWVzLmxlbmd0aDsKICAgICAgbGV0IGVudHJpZXNIdG1sID0gJyc7CiAgICAgIGlmIChlbnRyaWVzLmxlbmd0aCA9PT0gMCkgewogICAgICAgIGVudHJpZXNIdG1sID0gJzxkaXYgY2xhc3M9InNjaGVkLWVtcHR5LXNsb3QiPk5vdGhpbmcgcGxhbm5lZDwvZGl2Pic7CiAgICAgIH0gZWxzZSB7CiAgICAgICAgZW50cmllc0h0bWwgPSBlbnRyaWVzLm1hcChlbnRyeSA9PiB7CiAgICAgICAgICBjb25zdCBhY3QgPSBmaW5kQWN0aXZpdHlCeUlkKGVudHJ5LmlkKTsKICAgICAgICAgIGlmICghYWN0KSByZXR1cm4gJyc7CiAgICAgICAgICBjb25zdCB0YWdIdG1sID0gZW50cnkudGFnCiAgICAgICAgICAgID8gYDxzcGFuIGNsYXNzPSJzY2hlZC1lbnRyeS10YWciPiR7ZW50cnkudGFnfTwvc3Bhbj5gCiAgICAgICAgICAgIDogJyc7CiAgICAgICAgICByZXR1cm4gYDxkaXYgY2xhc3M9InNjaGVkLWVudHJ5Ij48c3BhbiBjbGFzcz0ic2NoZWQtZW50cnktaWNvbiI+JHthY3QuaWNvbn08L3NwYW4+PHNwYW4gY2xhc3M9InNjaGVkLWVudHJ5LW5hbWUiPiR7YWN0LmFjdGl2aXR5fTwvc3Bhbj4ke3RhZ0h0bWx9PC9kaXY+YDsKICAgICAgICB9KS5qb2luKCcnKTsKICAgICAgfQoKICAgICAgZGF5RGl2LmlubmVySFRNTCA9IGAKICAgICAgICA8ZGl2IGNsYXNzPSJzY2hlZC1kYXktaGVhZCI+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJzY2hlZC1kYXktbmFtZSI+JHtmb3JtYXREYXRlTGFiZWwoZGF5RGF0ZSl9PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJzY2hlZC1kYXktZGF0ZSI+JHtmb3JtYXREYXRlU2hvcnQoZGF5RGF0ZSl9PC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgICAgJHtlbnRyaWVzSHRtbH0KICAgICAgYDsKICAgICAgd2Vla1Jvdy5hcHBlbmRDaGlsZChkYXlEaXYpOwogICAgfQogICAgd2Vla3NDb250YWluZXIuYXBwZW5kQ2hpbGQod2Vla1Jvdyk7CiAgfQoKICBpZiAoY291bnRlckVsKSB7CiAgICBjb3VudGVyRWwudGV4dENvbnRlbnQgPSBgJHt0b3RhbFBsYW5uZWR9ICR7dG90YWxQbGFubmVkID09PSAxID8gJ2FjdGl2aXR5JyA6ICdhY3Rpdml0aWVzJ30gcGxhbm5lZGA7CiAgfQp9CgpyZW5kZXJEYXNoYm9hcmQoKTsKcmVuZGVyU3VnZ2VzdGVkKCk7CnJlbmRlckNoaXBzKCk7CnJlbmRlckJlbnRvKCk7CnBpY2tSYW5kb20oKTsKcmVuZGVyU2NoZWR1bGUoKTsKPC9zY3JpcHQ+CjwvYm9keT4KPC9odG1sPgo=";
+const PUBLIC_TEMPLATE = new TextDecoder().decode(Uint8Array.from(atob(PUBLIC_TEMPLATE_B64), c => c.charCodeAt(0)));
+loadState();
+renderDashboard();
+renderSuggested();
+renderChips();
+renderBento();
+pickRandom();
+</script>
+</body>
+</html>
